@@ -153,15 +153,15 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                 </p>
                 <div className="space-y-2 pt-1">
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                    <strong className="text-indigo-400 block mb-0.5">Macroeconomic Flow Layer (CSO Table HEO08 & HEO09)</strong>
+                    <strong className="text-indigo-400 block mb-0.5">Macroeconomic Flow Layer (CSO Table HEO08)</strong>
                     <span className="text-slate-400 text-[11px]">
                       Captures the complete national sector destination flow across fields of study and types of institutes (Universities vs. Technological Universities / IoTs).
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                    <strong className="text-cyan-400 block mb-0.5">Institutional Outcomes & Earnings Layer (CSO Table HEO14 & HEO16)</strong>
+                    <strong className="text-cyan-400 block mb-0.5">Institutional Earnings Layer (CSO Table HEO16)</strong>
                     <span className="text-slate-400 text-[11px]">
-                      Tracks verified Revenue PAYE median earnings and graduation counts by specific higher education institution (e.g. Maynooth University, Trinity, UCD, TU Dublin, MTU, ATU) across 1 to 10 years post-graduation.
+                      Tracks verified Revenue PAYE median earnings by specific higher education institution (e.g. Maynooth University, Trinity, UCD, TU Dublin, MTU, ATU) across 1 to 10 years post-graduation.
                     </span>
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                   You can cite this dataset in college documentation, dissertations, or project bibliographies as follows:
                 </p>
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-300 select-all leading-normal">
-                  Central Statistics Office (CSO) Ireland. (2024). <em>Higher Education Outcomes: Graduate Sector of Employment (Table HEO08), National Graduate Earnings (Table HEO12), and Institutional Graduate Outcomes & Earnings (Tables HEO14 & HEO16)</em>. data.cso.ie. Licensed under CC BY 4.0.
+                  Central Statistics Office (CSO) Ireland. <em>Higher Education Outcomes: Graduate Sector of Employment (Table HEO08), National Graduate Earnings (Table HEO12), and Graduate Earnings by Higher Education Institution (Table HEO16)</em>. data.cso.ie, accessed November 2026. Licensed under CC BY 4.0.
                 </div>
               </div>
             </div>
