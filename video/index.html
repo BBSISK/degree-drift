@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: #070b18; }
+  #stage { width: 1080px; height: 1080px; position: relative; overflow: hidden;
+    font-family: 'Inter', 'Inter Display', sans-serif; color: #e2e8f0;
+    background: radial-gradient(circle at 85% 8%, rgba(6,182,212,0.10), transparent 45%),
+                radial-gradient(circle at 10% 95%, rgba(99,102,241,0.10), transparent 45%), #070b18; }
+  svg text { font-family: 'Inter', 'Inter Display', sans-serif; }
+</style>
+<script src="d3-array.min.js"></script>
+<script src="d3-path.min.js"></script>
+<script src="d3-shape.min.js"></script>
+<script src="d3-sankey.min.js"></script>
+<script src="vdata.js"></script>
+</head>
+<body>
+<div id="stage"><svg id="svg" width="1080" height="1080" viewBox="0 0 1080 1080"></svg></div>
+<script>
+const W = 1080, H = 1080;
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+const D = window.VDATA;
+
+// ---------- palette & labels ----------
+const FIELDS = {
+  '06': { name: 'ICT', color: '#06b6d4' },
+  '07': { name: 'Engineering', color: '#f97316' },
+  '04': { name: 'Business & Law', color: '#3b82f6' },
+  '05': { name: 'Natural Sciences', color: '#10b981' },
+  '01': { name: 'Education', color: '#f59e0b' },
+  '09': { name: 'Health & Welfare', color: '#f43f5e' },
+  '03': { name: 'Social Sciences', color: '#a855f7' },
+  '08': { name: 'Agriculture & Vet', color: '#84cc16' },
+  '02': { name: 'Arts & Humanities', color: '#ec4899' },
+  '10': { name: 'Services', color: '#94a3b8' },
+};
+const FIELD_ORDER = ['02', '04', '03', '05', '06', '07', '01', '09', '08', '10'];
+const SECTORS = {
+  P: 'Education', Q: 'Health & Social Work', M: 'Professional & Scientific', J: 'Tech (ICT sector)',
+  Y3500: 'Finance & Real Estate', Y0900: 'Industry & Pharma', G: 'Retail', I: 'Hospitality',
+  O: 'Public Admin', N: 'Admin & Support', OTHER: 'Other sectors',
+};
+const SECTOR_ORDER = ['G', 'I', 'N', 'M', 'J', 'Y3500', 'Y0900', 'P', 'O', 'Q', 'OTHER'];
+const GROUP = s => (SECTORS[s] ? s : 'OTHER');
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, k) => a + (b - a) * k;
+const ramp = (t, a, b) => clamp((t - a) / (b - a)); // 0 before a, 1 after b
+const fadeInOut = (t, a, b, f = 0.35) => Math.min(ramp(t, a, a + f), 1 - ramp(t, b - f, b));
+function el(tag, attrs, parent = svg, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  parent.appendChild(e);
+  return e;
+}
+const eur = v => '€' + Math.round(v).toLocaleString('en-IE');
+
+// ---------- timeline ----------
+// Hook 0–2.6 | Salary race 2.6–14.0 | Sankey 14.0–30.0
+const RACE_START = 2.6, RACE_END = 14.0, SANKEY_START = 14.0, END = 30.0;
+const RACE_KEYS = [ // [time, year] keyframes: hold, then move to next
+  [2.6, 1], [4.6, 1], [5.3, 2], [5.7, 2], [6.4, 3], [8.0, 3], [8.7, 5], [9.1, 5], [9.8, 8], [10.2, 8], [10.9, 10], [14.0, 10],
+];
+const SANKEY_KEYS = [[14.0, 1], [18.6, 1], [19.6, 5], [23.4, 5], [24.4, 10], [30.0, 10]];
+
+function stateAt(keys, t) {
+  // returns {a, b, k}: interpolate from year a to year b by eased k
+  for (let i = 0; i < keys.length - 1; i++) {
+    const [t0, y0] = keys[i], [t1, y1] = keys[i + 1];
+    if (t <= t1) return { a: y0, b: y1, k: y0 === y1 ? 0 : ease((t - t0) / (t1 - t0)) };
+  }
+  const last = keys[keys.length - 1][1];
+  return { a: last, b: last, k: 0 };
+}
+
+// ---------- shared chrome ----------
+function chrome(t, opts) {
+  // Title block
+  el('text', { x: 64, y: 92, 'font-size': 22, 'font-weight': 700, fill: '#38bdf8', 'letter-spacing': 3 }, svg, 'DEGREE DRIFT');
+  el('text', { x: 64, y: 140, 'font-size': 40, 'font-weight': 800, fill: '#fff' }, svg, opts.title);
+  if (opts.subtitle) el('text', { x: 64, y: 176, 'font-size': 21, 'font-weight': 500, fill: '#94a3b8' }, svg, opts.subtitle);
+  // Year chip (top right)
+  if (opts.yearLabel) {
+    const g = el('g', { transform: 'translate(1016,62)' });
+    el('rect', { x: -250, y: 0, width: 250, height: 104, rx: 20, fill: 'rgba(15,23,42,0.9)', stroke: opts.chipColor || '#06b6d4', 'stroke-width': 2.5 }, g);
+    el('text', { x: -125, y: 30, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: '#94a3b8', 'letter-spacing': 1.5 }, g, 'YEARS AFTER GRADUATION');
+    el('text', { x: -125, y: 84, 'text-anchor': 'middle', 'font-size': 52, 'font-weight': 900, fill: '#fff' }, g, `Year ${opts.yearLabel}`);
+  }
+  // Footer source line
+  el('text', { x: 64, y: 1024, 'font-size': 15, 'font-weight': 500, fill: '#64748b' }, svg,
+    'Source: CSO Ireland, tables HEO08 & HEO12 (© Government of Ireland, CC BY 4.0) • Pooled and annualised by Degree Drift');
+  el('text', { x: 64, y: 1046, 'font-size': 15, 'font-weight': 500, fill: '#64748b' }, svg,
+    'Honours degree (NFQ Level 8), national • Year 1 = 2010–22 graduates, Year 10 = 2010–13 • Earnings: median weekly pay × 52');
+}
+
+function caption(t, a, b, lines, color = '#fff', y = 900) {
+  const o = fadeInOut(t, a, b);
+  if (o <= 0) return;
+  const dy = (1 - ease(ramp(t, a, a + 0.45))) * 18;
+  const g = el('g', { opacity: o, transform: `translate(0,${dy})` });
+  el('rect', { x: 48, y: y - 52, width: 984, height: 40 + lines.length * 46, rx: 22, fill: 'rgba(15,23,42,0.92)', stroke: 'rgba(56,189,248,0.35)', 'stroke-width': 1.5 }, g);
+  lines.forEach((ln, i) => {
+    const tEl = el('text', { x: 84, y: y + i * 46, 'font-size': i === 0 ? 34 : 28, 'font-weight': i === 0 ? 800 : 600, fill: i === 0 ? color : '#cbd5e1' }, g);
+    // allow **bold** highlight segments
+    ln.split(/(\*\*[^*]+\*\*)/).forEach(seg => {
+      if (!seg) return;
+      const bold = seg.startsWith('**');
+      el('tspan', bold ? { fill: '#fbbf24', 'font-weight': 900 } : {}, tEl, bold ? seg.slice(2, -2) : seg);
+    });
+  });
+}
+
+// ---------- scene 1: title card (frame 0 = LinkedIn cover image) ----------
+function drawInto(group, fn) {
+  const prev = svg.appendChild.bind(svg);
+  svg.appendChild = (node) => group.appendChild(node);
+  try { fn(); } finally { svg.appendChild = prev; }
+}
+function drawHook(t) {
+  const o = 1 - ramp(t, 2.3, 2.6);
+  const g = el('g', { opacity: o });
+  el('text', { x: 540, y: 112, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 700, fill: '#38bdf8', 'letter-spacing': 6 }, g, 'DEGREE DRIFT');
+  el('text', { x: 540, y: 196, 'text-anchor': 'middle', 'font-size': 62, 'font-weight': 900, fill: '#fff' }, g, 'What Irish graduates earn');
+  el('text', { x: 540, y: 270, 'text-anchor': 'middle', 'font-size': 62, 'font-weight': 900, fill: '#fff' }, g, '& where they really work');
+  el('text', { x: 540, y: 322, 'text-anchor': 'middle', 'font-size': 27, 'font-weight': 600, fill: '#94a3b8' }, g, '1 to 10 years after graduation, by field of study');
+
+  // Two preview panels drawn from the real charts
+  const panel = (x, label, fn, tx, ty, sc, color) => {
+    const pg = el('g', {}, g);
+    el('rect', { x, y: 370, width: 466, height: 520, rx: 24, fill: 'rgba(15,23,42,0.85)', stroke: color, 'stroke-width': 2 }, pg);
+    el('text', { x: x + 233, y: 414, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 800, fill: color, 'letter-spacing': 1 }, pg, label);
+    el('text', { x: x + 233, y: 446, 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 600, fill: '#94a3b8' }, pg, '10 years after graduation • honours degree');
+    const clipId = 'clip' + x;
+    const defs = el('defs', {}, pg); const cp = el('clipPath', { id: clipId }, defs);
+    el('rect', { x: x + 8, y: 430, width: 450, height: 452, rx: 16 }, cp);
+    const inner = el('g', { 'clip-path': `url(#${clipId})` }, pg);
+    const scaled = el('g', { transform: `translate(${tx},${ty}) scale(${sc})` }, inner);
+    drawInto(scaled, fn);
+  };
+  panel(64, 'WHAT THEY EARN', () => drawRace(10.95), 52, 412, 0.46, '#38bdf8');
+  panel(550, 'WHERE THEY WORK', () => drawSankey(24.45), 503, 382, 0.52, '#a855f7');
+
+  el('text', { x: 540, y: 950, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 700, fill: '#e2e8f0' }, g, 'Does your degree decide your career? Less than you\'d think.');
+  el('text', { x: 540, y: 1000, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 500, fill: '#64748b' }, g, 'CSO data linking graduation records to Revenue PAYE records • Link in comments');
+}
+
+// ---------- scene 2: salary race ----------
+const RACE_YEARS = [1, 2, 3, 5, 8, 10];
+function ranked(year) {
+  const e = D.earn[String(year)];
+  const ids = Object.keys(e).filter(k => e[k] > 0).sort((a, b) => e[b] - e[a]);
+  const r = {}; ids.forEach((id, i) => r[id] = i);
+  return { e, r };
+}
+function drawRace(t) {
+  const o = Math.min(ramp(t, RACE_START, RACE_START + 0.4), 1 - ramp(t, RACE_END - 0.5, RACE_END));
+  if (o <= 0) return;
+  const g = el('g', { opacity: o });
+  const { a, b, k } = stateAt(RACE_KEYS, t);
+  const A = ranked(a), B = ranked(b), Y1 = D.earn['1'];
+  const shownYear = k < 0.5 ? a : b;
+
+  const top = 250, rowH = 58, labelW = 300, barX = 64 + labelW, maxW = 1016 - barX - 10, maxV = 75000;
+  // grid
+  const showGrowth = ramp(t, 12.3, 12.8);
+  [0, 20000, 40000, 60000].forEach(v => {
+    const x = barX + (v / maxV) * maxW;
+    el('line', { x1: x, y1: top - 26, x2: x, y2: top + rowH * 10 - 6, stroke: 'rgba(51,65,85,0.45)', 'stroke-width': 1 }, g);
+    el('text', { x, y: top - 34, 'text-anchor': 'middle', 'font-size': 15, fill: '#475569', 'font-weight': 600, opacity: v === 60000 ? 1 - showGrowth : 1 }, g, v === 0 ? '€0' : `€${v / 1000}k`);
+  });
+  const ids = FIELD_ORDER;
+  ids.forEach(id => {
+    const rank = lerp(A.r[id], B.r[id], k);
+    const val = lerp(A.e[id], B.e[id], k);
+    const y = top + rank * rowH;
+    const w = Math.max(8, (val / maxV) * maxW);
+    const f = FIELDS[id];
+    const isTop = Math.round(rank) === 0;
+    const hiGrowth = showGrowth > 0 && (id === '02' || id === '04');
+    const dim = showGrowth > 0 && !(id === '02' || id === '04' || id === '06') ? lerp(1, 0.35, showGrowth) : 1;
+    const row = el('g', { opacity: dim }, g);
+    el('text', { x: barX - 16, y: y + 31, 'text-anchor': 'end', 'font-size': 23, 'font-weight': isTop ? 800 : 600, fill: isTop ? '#fff' : '#cbd5e1' }, row, f.name);
+    el('rect', { x: barX, y: y + 6, width: w, height: rowH - 14, rx: 10, fill: f.color, opacity: 0.92 }, row);
+    // Only show euro figures when a real year is on screen (hide in-between values).
+    const valOp = k === 0 ? 1 : Math.abs(1 - 2 * k) ** 3;
+    el('text', { x: barX + 14, y: y + 32, 'font-size': 21, 'font-weight': 800, fill: '#0b1020', opacity: valOp }, row, eur(k < 0.5 ? A.e[id] : B.e[id]));
+    if (showGrowth > 0) {
+      const gr = Math.round(100 * (B.e[id] / Y1[id] - 1));
+      el('text', { x: barX + w + 12, y: y + 32, 'font-size': 21, 'font-weight': 800, fill: hiGrowth ? '#fbbf24' : '#94a3b8', opacity: showGrowth }, row, `+${gr}%`);
+    }
+    if (isTop) el('text', { x: barX + w + 12, y: y + 32, 'font-size': 20, 'font-weight': 800, fill: '#fbbf24', opacity: 1 - showGrowth }, row, '#1');
+  });
+  if (showGrowth > 0) el('text', { x: 1016, y: top - 34, 'text-anchor': 'end', 'font-size': 15, 'font-weight': 700, fill: '#fbbf24', opacity: showGrowth }, g, 'GROWTH SINCE YEAR 1');
+
+  // captions
+  caption(t, 3.0, 5.4, ['Year 1: Education & Health start highest', 'In line with public-sector pay scales; ICT starts at #3']);
+  caption(t, 6.5, 8.6, ['Year 3: ICT moves to #1', `${eur(D.earn['3']['06'])} a year, up 28% on Year 1`]);
+  caption(t, 11.0, 12.6, ['Year 10: ICT pays most', `Median ${eur(D.earn['10']['06'])} a year`]);
+  caption(t, 12.6, 14.0, ['…but ICT isn\'t the fastest climber', 'Arts **+146%** and Business **+137%** vs ICT +123%']);
+  return { shownYear };
+}
+
+// ---------- scene 3: sankey ----------
+function buildLayout(year) {
+  const flows = D.flows[String(year)];
+  const agg = {}; let total = 0;
+  flows.forEach(([f, s, c]) => { const key = f + '|' + GROUP(s); agg[key] = (agg[key] || 0) + c; total += c; });
+  const nodes = FIELD_ORDER.map(id => ({ id: 'f' + id })).concat(SECTOR_ORDER.map(id => ({ id: 's' + id })));
+  const links = [];
+  FIELD_ORDER.forEach(f => SECTOR_ORDER.forEach(s => {
+    links.push({ source: 'f' + f, target: 's' + s, value: Math.max(1e-6, ((agg[f + '|' + s] || 0) / total) * 1000), f, s });
+  }));
+  const sk = d3.sankey().nodeId(d => d.id).nodeWidth(16).nodePadding(9).nodeSort(null).linkSort(null)
+    .extent([[300, 236], [700, 820]]).iterations(0);
+  const g = sk({ nodes: nodes.map(d => ({ ...d })), links: links.map(d => ({ ...d })) });
+  const N = {}; g.nodes.forEach(n => N[n.id] = { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 });
+  const L = {}; g.links.forEach(l => L[l.f + '|' + l.s] = { y0: l.y0, y1: l.y1, w: l.width });
+  return { N, L };
+}
+const LAYOUTS = { 1: buildLayout(1), 5: buildLayout(5), 10: buildLayout(10) };
+function pctField(year, f, s) { const r = D.flows[String(year)].find(x => x[0] === f && x[1] === s); return r ? r[3] : 0; }
+function pctSector(year, f, s) { const r = D.flows[String(year)].find(x => x[0] === f && x[1] === s); return r ? r[4] : 0; }
+
+function drawSankey(t) {
+  const o = ramp(t, SANKEY_START, SANKEY_START + 0.6);
+  if (o <= 0) return;
+  const g = el('g', { opacity: o });
+  const { a, b, k } = stateAt(SANKEY_KEYS, t);
+  const LA = LAYOUTS[a], LB = LAYOUTS[b];
+  const N = id => { const p = LA.N[id], q = LB.N[id]; return { x0: lerp(p.x0, q.x0, k), x1: lerp(p.x1, q.x1, k), y0: lerp(p.y0, q.y0, k), y1: lerp(p.y1, q.y1, k) }; };
+
+  // focus: which highlight is active
+  const focus = t < 18.9 ? 'arts' : t < 23.7 ? 'tech' : 'arts';
+  const fk = Math.min(ramp(t, 15.0, 15.6), 1 - ramp(t, 18.6, 18.9)) || 0;
+  const tk = Math.min(ramp(t, 19.7, 20.2), 1 - ramp(t, 23.4, 23.7)) || 0;
+  const ak = ramp(t, 24.5, 25.1) * (1 - ramp(t, 27.6, 28.2) * 0.0);
+  const hl = Math.max(fk, tk, ak); // highlight strength
+  const isHL = (f, s) => (focus === 'arts' ? f === '02' : s === 'J');
+
+  // links
+  FIELD_ORDER.forEach(f => SECTOR_ORDER.forEach(s => {
+    const key = f + '|' + s, p = LA.L[key], q = LB.L[key];
+    const w = lerp(p.w, q.w, k); if (w < 0.3) return;
+    const y0 = lerp(p.y0, q.y0, k), y1 = lerp(p.y1, q.y1, k);
+    const x0 = N('f' + f).x1, x1 = N('s' + s).x0, xm = (x0 + x1) / 2;
+    const on = isHL(f, s);
+    const op = on ? lerp(0.42, 0.9, hl) : lerp(0.42, 0.08, hl);
+    el('path', { d: `M${x0},${y0}C${xm},${y0} ${xm},${y1} ${x1},${y1}`, fill: 'none', stroke: FIELDS[f].color, 'stroke-width': w, 'stroke-opacity': op }, g);
+  }));
+  // label positions with a minimum gap so small nodes don't collide
+  const spread = (ids, pre) => {
+    const ys = ids.map(id => { const n = N(pre + id); return (n.y0 + n.y1) / 2; });
+    const gap = 23;
+    for (let i = 1; i < ys.length; i++) if (ys[i] - ys[i - 1] < gap) ys[i] = ys[i - 1] + gap;
+    const overflow = ys[ys.length - 1] - 822; if (overflow > 0) for (let i = ys.length - 1; i >= 0; i--) { ys[i] -= overflow; if (i > 0 && ys[i] - ys[i - 1] >= gap) break; }
+    const out = {}; ids.forEach((id, i) => out[id] = ys[i]); return out;
+  };
+  const FY = spread(FIELD_ORDER, 'f'), SY = spread(SECTOR_ORDER, 's');
+  // nodes + labels
+  FIELD_ORDER.forEach(f => {
+    const n = N('f' + f), on = focus === 'arts' ? f === '02' : true;
+    const dim = focus === 'arts' && !on ? lerp(1, 0.4, hl) : 1;
+    el('rect', { x: n.x0, y: n.y0, width: n.x1 - n.x0, height: Math.max(1, n.y1 - n.y0), rx: 3, fill: FIELDS[f].color, opacity: dim }, g);
+    el('text', { x: n.x0 - 12, y: FY[f] + 7, 'text-anchor': 'end', 'font-size': 20, 'font-weight': on && focus === 'arts' && hl > 0.5 ? 800 : 600, fill: '#e2e8f0', opacity: dim }, g, FIELDS[f].name);
+  });
+  SECTOR_ORDER.forEach(s => {
+    const n = N('s' + s);
+    const on = focus === 'tech' ? s === 'J' : true;
+    const dim = focus === 'tech' && !on ? lerp(1, 0.4, hl) : 1;
+    el('rect', { x: n.x0, y: n.y0, width: n.x1 - n.x0, height: Math.max(1, n.y1 - n.y0), rx: 3, fill: '#cbd5e1', opacity: dim }, g);
+    el('text', { x: n.x1 + 12, y: SY[s] + 7, 'font-size': 20, 'font-weight': focus === 'tech' && s === 'J' && hl > 0.5 ? 800 : 600, fill: '#e2e8f0', opacity: dim }, g, SECTORS[s]);
+  });
+  // percentage callouts
+  const yr = k < 0.5 ? a : b;
+  const tag = (x, y, txt, anchor, op) => {
+    const tw = txt.length * 13 + 22;
+    const gx = anchor === 'end' ? x - tw : x;
+    const gg = el('g', { opacity: op }, g);
+    el('rect', { x: gx, y: y - 22, width: tw, height: 32, rx: 10, fill: '#fbbf24' }, gg);
+    el('text', { x: gx + tw / 2, y: y + 1, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 900, fill: '#0b1020' }, gg, txt);
+  };
+  if (focus === 'arts' && hl > 0) {
+    // Arts share in Retail and Education, placed right of sector labels
+    [['G', pctField(yr, '02', 'G')], ['P', pctField(yr, '02', 'P')]].forEach(([s, v]) => {
+      const n = N('s' + s);
+      tag(n.x1 + 26 + SECTORS[s].length * 11.2, SY[s] + 2, `${Math.round(v)}% of Arts`, 'start', hl);
+    });
+  }
+  if (focus === 'tech' && hl > 0) {
+    [['04', pctSector(yr, '04', 'J')], ['06', pctSector(yr, '06', 'J')], ['02', pctSector(yr, '02', 'J')]].forEach(([f, v]) => {
+      const n = N('f' + f);
+      tag(n.x0 - 22 - FIELDS[f].name.length * 11.4, FY[f] + 2, `${Math.round(v)}%`, 'end', hl);
+    });
+  }
+
+  // captions
+  caption(t, 15.0, 18.7, ['Year 1: the retail "landing pad"', `**${Math.round(pctField(1, '02', 'G'))}%** of Arts graduates work in retail; **${Math.round(pctField(1, '02', 'P'))}%** in education`]);
+  caption(t, 19.7, 23.5, ['Year 5: tech isn\'t just for ICT grads', `Graduates in tech: Business degrees **${Math.round(pctSector(5, '04', 'J'))}%**, ICT degrees **${Math.round(pctSector(5, '06', 'J'))}%**`]);
+  caption(t, 24.5, 27.4, ['Year 10: Arts graduates have moved on', `**${Math.round(pctField(10, '02', 'P'))}%** work in education; retail is down to **${Math.round(pctField(10, '02', 'G'))}%**`]);
+  // end card over the final sankey
+  const ek = ramp(t, 27.4, 27.9);
+  if (ek > 0) {
+    const gg = el('g', { opacity: ek, transform: `translate(0,${(1 - ease(ek)) * 16})` }, svg);
+    el('rect', { x: 48, y: 848, width: 984, height: 132, rx: 22, fill: 'rgba(8,47,73,0.95)', stroke: '#38bdf8', 'stroke-width': 2 }, gg);
+    el('text', { x: 540, y: 902, 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 900, fill: '#fff' }, gg, 'Your degree is a starting point, not a fixed path.');
+    el('text', { x: 540, y: 950, 'text-anchor': 'middle', 'font-size': 27, 'font-weight': 700, fill: '#38bdf8' }, gg, 'Explore it: degree-drift.onrender.com');
+  }
+  return { yr };
+}
+
+
+// ---------- scene 4: how it was built (30.0–37.0) ----------
+const BUILD_START = 30.0, BUILD_END = 37.0;
+function drawBuild(t) {
+  const o = ramp(t, BUILD_START + 0.28, BUILD_START + 0.6);
+  const g = el('g', { opacity: o });
+  el('text', { x: 64, y: 92, 'font-size': 22, 'font-weight': 700, fill: '#38bdf8', 'letter-spacing': 3 }, g, 'DEGREE DRIFT • BEHIND THE DATA');
+  el('text', { x: 64, y: 142, 'font-size': 44, 'font-weight': 900, fill: '#fff' }, g, 'How it was built');
+  el('text', { x: 64, y: 178, 'font-size': 21, 'font-weight': 500, fill: '#94a3b8' }, g, 'From national administrative data to an interactive dashboard');
+
+  const stages = [
+    { tag: 'SOURCE', color: '#94a3b8', title: 'HEA graduation records + Revenue PAYE records',
+      lines: ['Linked by the CSO under the Statistics Act 1993; published as open data'] },
+    { tag: 'EXTRACT', color: '#38bdf8', title: 'CSO PxStat REST API • JSON-stat 2.0',
+      lines: ['Tables HEO08, HEO12, HEO16: 1.4 million cells across three 6-dimension cubes'] },
+    { tag: 'TRANSFORM', color: '#a855f7', title: 'Python data pipeline',
+      lines: ['Decode cube strides • pool 13 cohorts • same-cohort benchmarks • no imputation'] },
+    { tag: 'VALIDATE', color: '#10b981', title: 'Automated checks in CI on every build',
+      lines: ['Shares sum to 100% • no fallback values • 32 quoted figures verified'] },
+    { tag: 'DELIVER', color: '#f59e0b', title: 'React + TypeScript + d3-sankey dashboard',
+      lines: ['2,238 sector flows • 1,776 institution earnings • GitHub Actions → Render'] },
+  ];
+  const x = 64, w = 952, top = 214, h = 118, gapY = 26;
+  stages.forEach((st, i) => {
+    const t0 = BUILD_START + 0.55 + i * 0.32;
+    const k = ease(ramp(t, t0, t0 + 0.45));
+    if (k <= 0) return;
+    const y = top + i * (h + gapY);
+    const cg = el('g', { opacity: k, transform: `translate(${(1 - k) * -30},0)` }, g);
+    el('rect', { x, y, width: w, height: h, rx: 20, fill: 'rgba(15,23,42,0.9)', stroke: st.color, 'stroke-width': 2, 'stroke-opacity': 0.7 }, cg);
+    el('rect', { x, y, width: 10, height: h, rx: 5, fill: st.color }, cg);
+    el('text', { x: x + 34, y: y + 38, 'font-size': 16, 'font-weight': 800, fill: st.color, 'letter-spacing': 2.5 }, cg, `${i + 1}  ${st.tag}`);
+    el('text', { x: x + 34, y: y + 70, 'font-size': 27, 'font-weight': 800, fill: '#fff' }, cg, st.title);
+    el('text', { x: x + 34, y: y + 99, 'font-size': 19, 'font-weight': 500, fill: '#cbd5e1' }, cg, st.lines[0]);
+    // arrow to next
+    if (i < stages.length - 1) {
+      const ak = ramp(t, t0 + 0.3, t0 + 0.55);
+      el('path', { d: `M${x + 60},${y + h + 4} L${x + 60},${y + h + gapY - 6}`, stroke: '#475569', 'stroke-width': 3, opacity: ak }, g);
+      el('path', { d: `M${x + 52},${y + h + gapY - 12} L${x + 60},${y + h + gapY - 4} L${x + 68},${y + h + gapY - 12}`, fill: 'none', stroke: '#475569', 'stroke-width': 3, opacity: ak }, g);
+    }
+  });
+  const fk = ramp(t, BUILD_START + 2.2, BUILD_START + 2.7);
+  el('text', { x: 540, y: 968, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800, fill: '#38bdf8', opacity: fk }, g, 'degree-drift.onrender.com  •  github.com/bbsisk/degree-drift');
+  el('text', { x: 540, y: 1036, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 500, fill: '#64748b', opacity: fk }, g,
+    'Source: CSO Ireland, Higher Education Outcomes (© Government of Ireland, CC BY 4.0). Analysis by Degree Drift; not endorsed by the CSO.');
+}
+
+// ---------- frame ----------
+window.render = function (t) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  if (t >= BUILD_START) {
+    const fo = 1 - ramp(t, BUILD_START, BUILD_START + 0.3);
+    if (fo > 0) { const gg = el('g', { opacity: fo }); drawInto(gg, () => drawSankeyScene(BUILD_START - 0.001)); }
+    drawBuild(t);
+    return;
+  }
+  if (t < RACE_START) { drawHook(t); return; }
+  if (t < RACE_END) {
+    const { a, b, k } = stateAt(RACE_KEYS, t);
+    const yr = k < 0.5 ? a : b;
+    const co = ramp(t, RACE_START, RACE_START + 0.4);
+    const gChrome = el('g', { opacity: co });
+    const saved = svg; // draw chrome into group
+    chromeInto(gChrome, t, { title: 'What graduates earn', subtitle: 'Median annual earnings by field of study', yearLabel: String(yr) });
+    drawRace(t);
+    return;
+  }
+  drawSankeyScene(t);
+};
+function drawSankeyScene(t) {
+  const { a, b, k } = stateAt(SANKEY_KEYS, t);
+  const yr = k < 0.5 ? a : b;
+  const co = ramp(t, SANKEY_START, SANKEY_START + 0.6);
+  const gChrome = el('g', { opacity: co });
+  chromeInto(gChrome, t, { title: 'Where graduates work', subtitle: 'Field of study → sector of employment (share of graduates)', yearLabel: String(yr), chipColor: '#a855f7' });
+  drawSankey(t);
+}
+function chromeInto(group, t, opts) {
+  // reuse chrome() but parent into the group
+  const realEl = el;
+  const tmp = document.createElementNS(NS, 'g');
+  const prevAppend = svg.appendChild.bind(svg);
+  svg.appendChild = (node) => group.appendChild(node);
+  try { chrome(t, opts); } finally { svg.appendChild = prevAppend; }
+}
+window.render(0);
+</script>
+</body>
+</html>

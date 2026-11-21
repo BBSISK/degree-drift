@@ -90,6 +90,17 @@ This rewrites `public/data.json` and checks it. If the CSO revises its tables, t
 
 ---
 
+## 🎬 LinkedIn video
+
+`video/` holds a 37-second, 1080×1080 video built from the same verified data: a salary race, the sector Sankey and a "how it was built" slide. `video/output/` has the finished MP4 and cover image, and `video/linkedin-post.md` has the post text and the sourced first comment. To rebuild it after a data refresh:
+
+```bash
+python3 video/scripts/build_data.py
+python3 video/scripts/render.py   # needs Playwright (Chromium) and ffmpeg
+```
+
+---
+
 ## 📊 Data attribution
 
 * Data from the [Central Statistics Office (CSO) Ireland](https://data.cso.ie): tables **HEO08**, **HEO12** and **HEO16** (Higher Education Outcomes).
