@@ -46,11 +46,15 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  // Timelapse Auto-advance effect
+  // Timelapse Auto-advance effect (holds 4x longer at Year 10 final position)
   useEffect(() => {
     if (!isPlaying) return;
 
-    const timer = setInterval(() => {
+    // Normal beat is 2.8s; final position (Year 10) holds for 4x as long (11.2s)
+    const isFinalPosition = selectedYear === availableYears[availableYears.length - 1];
+    const holdDuration = isFinalPosition ? 11200 : 2800;
+
+    const timeout = setTimeout(() => {
       setSelectedYear((prev) => {
         const idx = availableYears.indexOf(prev);
         if (idx === -1 || idx === availableYears.length - 1) {
@@ -58,10 +62,10 @@ export const App: React.FC = () => {
         }
         return availableYears[idx + 1];
       });
-    }, 2800); // 2.8s per year beat
+    }, holdDuration);
 
-    return () => clearInterval(timer);
-  }, [isPlaying, availableYears]);
+    return () => clearTimeout(timeout);
+  }, [isPlaying, selectedYear, availableYears]);
 
   if (loading) {
     return (
@@ -93,6 +97,13 @@ export const App: React.FC = () => {
   const activeEarnings = isSpecificInstitution
     ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(selectedYear)] || currentTimeline.earnings
     : currentTimeline.earnings;
+
+  const allEarningsByYear = availableYears.reduce((acc, yr) => {
+    acc[yr] = isSpecificInstitution
+      ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(yr)] || currentTimelineGroup[String(yr)]?.earnings || {}
+      : currentTimelineGroup[String(yr)]?.earnings || {};
+    return acc;
+  }, {} as Record<number, Record<string, any>>);
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 transition-all ${isCinemaMode ? 'p-2 sm:p-6' : ''}`}>
@@ -174,9 +185,15 @@ export const App: React.FC = () => {
           <SalaryTrajectory
             earnings={activeEarnings}
             nationalEarnings={currentTimeline.earnings}
+            allEarningsByYear={allEarningsByYear}
             selectedInstitutionName={institutionName}
             isSpecificInstitution={isSpecificInstitution}
             selectedYear={selectedYear}
+            onSelectYear={(yr) => setSelectedYear(yr)}
+            availableYears={availableYears}
+            isPlaying={isPlaying}
+            onTogglePlay={() => setIsPlaying(!isPlaying)}
+            selectedNfq={selectedNfq}
           />
         </section>
 

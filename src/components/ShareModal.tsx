@@ -72,11 +72,11 @@ Data source: CSO Higher Education Outcomes (HEO08 & HEO12), linked with Revenue 
           </button>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-          <span>Tip: Take a quick screenshot of the Sankey chart to attach as the post image!</span>
+        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
+          <span>Tip: Use the "LinkedIn Graphic" button in the Salary Trajectory section to download high-res images, carousel slides, or animated video!</span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium"
+            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium self-end sm:self-auto"
           >
             Done
           </button>
