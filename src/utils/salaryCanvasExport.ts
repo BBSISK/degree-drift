@@ -1,4 +1,4 @@
-import { ProcessedSalaryRow, SalaryYearStory, SALARY_STORY_BEATS, computeRankedSalaryRows } from './salaryConstants';
+import { ProcessedSalaryRow, SalaryYearStory, COHORT_LABELS, getStoryBeat, isCuratedScope, computeRankedSalaryRows } from './salaryConstants';
 import { FieldEarnings } from '../types';
 
 export interface CanvasRenderOptions {
@@ -70,21 +70,21 @@ export function drawSalaryGraphicToCanvas(
   const padX = aspectRatio === '1:1' ? 60 : 80;
   const topY = 68;
 
-  // Tag badge: Clearly indicating 2015 -> 2025 cohort study
+  // Tag badge
   ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#38bdf8';
-  ctx.fillText('CSO IRELAND • 2015 → 2025 GRADUATE COHORT STUDY (HEO12 & HEO16)', padX, topY);
+  ctx.fillText('CSO IRELAND • GRADUATE EARNINGS 1–10 YEARS AFTER GRADUATION (HEO12 & HEO16)', padX, topY);
 
   // Main Title
   ctx.font = '800 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('Degree Drift: 2015 → 2025 Graduate Salary Trajectory', padX, topY + 44);
+  ctx.fillText('Degree Drift: What Irish Graduates Earn, Years 1–10', padX, topY + 44);
 
   // Subtitle with institution & degree info
   ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#94a3b8';
   ctx.fillText(
-    `Tracking P50 Median Annualised Earnings from 2015 graduation to 2025 • Cohort: ${nfqLabel} • ${institutionName}`,
+    `Median weekly earnings × 52, averaged across graduating cohorts • ${nfqLabel} • ${institutionName}`,
     padX,
     topY + 72
   );
@@ -110,18 +110,18 @@ export function drawSalaryGraphicToCanvas(
   ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.fillText(`YEAR ${year} (${story.calendarYear})`, yearBadgeX + yearBadgeWidth / 2, yearBadgeY + 44);
+  ctx.fillText(`YEAR ${year} OF 10`, yearBadgeX + yearBadgeWidth / 2, yearBadgeY + 44);
 
   ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = isFinalYear ? '#fbbf24' : '#38bdf8';
   ctx.fillText(
-    isFinalYear ? '★ 2025 DECADE HORIZON COMPLETE' : `${year} OF 10 YRS (2015 → ${story.calendarYear})`,
+    `${(COHORT_LABELS[year] || '').toUpperCase()} POOLED`,
     yearBadgeX + yearBadgeWidth / 2,
     yearBadgeY + 71
   );
   ctx.restore();
 
-  // 4. Dedicated 10-Year Period Progress Timeline Track (2015 -> 2025)
+  // 4. Dedicated 10-Year Period Progress Timeline Track 
   const timelineY = topY + 98;
   const timelineW = width - padX * 2;
   const timelineH = 10;
@@ -170,19 +170,19 @@ export function drawSalaryGraphicToCanvas(
   ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#64748b';
   ctx.textAlign = 'left';
-  ctx.fillText('2015 Graduation Entry', padX, timelineY + timelineH + 16);
+  ctx.fillText('Graduation', padX, timelineY + timelineH + 16);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#38bdf8';
   ctx.fillText(
-    `2015 → 2025 Horizon: Year ${year} (${story.calendarYear}) • ${progressTimelinePct}% Elapsed`,
+    `Year ${year} since graduation • ${COHORT_LABELS[year] || ''}`,
     padX + timelineW / 2,
     timelineY + timelineH + 16
   );
 
   ctx.textAlign = 'right';
   ctx.fillStyle = isFinalYear ? '#fbbf24' : '#64748b';
-  ctx.fillText('2025 Decade Horizon', padX + timelineW, timelineY + timelineH + 16);
+  ctx.fillText('Year 10', padX + timelineW, timelineY + timelineH + 16);
   ctx.restore();
 
   // 5. Narrative Insight Banner
@@ -209,7 +209,7 @@ export function drawSalaryGraphicToCanvas(
   ctx.font = '700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#f1f5f9';
   ctx.textAlign = 'left';
-  ctx.fillText(`Milestone Insight: ${story.headline}`, padX + 38, bannerY + 27);
+  ctx.fillText(story.headline, padX + 38, bannerY + 27);
 
   // Subhead / shift
   ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -372,7 +372,7 @@ export function drawSalaryGraphicToCanvas(
   ctx.fillStyle = '#64748b';
   ctx.textAlign = 'left';
   ctx.fillText(
-    'Source: Central Statistics Office (CSO) Ireland • Tables HEO12 & HEO16 linked Revenue tax records • 10-Year Horizon CC BY 4.0',
+    'Source: CSO Ireland, HEO12 & HEO16 (Revenue PAYE records), CC BY 4.0 • Each year pools different graduating cohorts; latest data 2023',
     padX,
     footerY
   );
@@ -430,7 +430,11 @@ function drawInterpolatedSalaryFrame(
 
   // Interpolated year and story
   const interpolatedYear = progress < 0.5 ? fromYear : toYear;
-  const story = SALARY_STORY_BEATS[interpolatedYear] || SALARY_STORY_BEATS[1];
+  const story = getStoryBeat(
+    interpolatedYear,
+    progress < 0.5 ? fromRows : toRows,
+    isCuratedScope(options.nfqLabel, options.institutionName)
+  );
   const interpolatedTimelinePct = Math.round(
     ((fromYear + (toYear - fromYear) * ease) / 10) * 100
   );
@@ -473,9 +477,8 @@ export async function downloadAllSlidesAsImages(
     const curEarnings = allEarningsByYear[yr] || {};
     const prevEarnings = prevYr ? allEarningsByYear[prevYr] : undefined;
     const y1Earnings = allEarningsByYear[1] || curEarnings;
-    const story = SALARY_STORY_BEATS[yr] || SALARY_STORY_BEATS[1];
-
     const rows = computeRankedSalaryRows(curEarnings, prevEarnings, y1Earnings, 75000);
+    const story = getStoryBeat(yr, rows, isCuratedScope(nfqLabel, institutionName));
 
     drawSalaryGraphicToCanvas(offscreen, {
       rows,
@@ -561,7 +564,7 @@ export async function recordSalaryRaceVideo(
       const yr = years[i];
       const isFinal = yr === 10;
       const rows = yearRowsMap.get(yr) || [];
-      const story = SALARY_STORY_BEATS[yr] || SALARY_STORY_BEATS[1];
+      const story = getStoryBeat(yr, rows, isCuratedScope(options.nfqLabel, options.institutionName));
 
       // 1. Draw static frame
       drawSalaryGraphicToCanvas(canvas, {

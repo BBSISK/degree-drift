@@ -3,10 +3,24 @@ CSO Ireland Higher Education Outcomes Data Processor
 Fetches:
 - HEO08: Graduate Sector of Employment (Field of Study x Sector x NFQ Level x Years Since Grad)
 - HEO12: National Graduate Earnings (Field x NFQ Level x Years Since Grad)
-- HEO14: Graduate Counts by Higher Education Institution (Institution x Field x NFQ Level)
 - HEO16: Graduate Earnings by Higher Education Institution (Institution x Field x NFQ Level x Years Since Grad)
 
 Aggregates and transforms into a clean, compact JSON structure for Degree Drift.
+
+Method notes (read before quoting any figure):
+- Each "years since graduation" value pools every graduating cohort the CSO has
+  published for that horizon. Year 1 pools the 2010-2022 cohorts; Year 10 pools
+  only 2010-2013. The cohorts pooled for each horizon are written to
+  metadata.cohortsByYearsSince. Year 1 and Year 10 are therefore NOT the same
+  graduates followed over time.
+- Earnings are the unweighted average of each cohort's published P50 (median)
+  weekly earnings, in nominal euro. annualEquivalentEur = weekly x 52.
+- Institution earnings are never filled in from the national figure. If the CSO
+  did not publish a value (suppressed, or the institution did not exist for
+  that cohort), the value is 0 and the dashboard leaves it out.
+- Each institution value carries a like-for-like national benchmark
+  (nationalMatchedWeeklyEur), averaged over exactly the same cohorts, so the
+  "vs national" comparison is not distorted by cohort timing or wage inflation.
 """
 
 import urllib.request
@@ -15,7 +29,6 @@ import os
 
 URL_HEO08 = "https://ws.cso.ie/public/api.restful/PxStat.Data.Cube_API.ReadDataset/HEO08/JSON-stat/2.0/en"
 URL_HEO12 = "https://ws.cso.ie/public/api.restful/PxStat.Data.Cube_API.ReadDataset/HEO12/JSON-stat/2.0/en"
-URL_HEO14 = "https://ws.cso.ie/public/api.restful/PxStat.Data.Cube_API.ReadDataset/HEO14/JSON-stat/2.0/en"
 URL_HEO16 = "https://ws.cso.ie/public/api.restful/PxStat.Data.Cube_API.ReadDataset/HEO16/JSON-stat/2.0/en"
 
 def fetch_json_stat(url):
@@ -46,6 +59,7 @@ def parse_heo08(data):
     m1 = m2 * len(sectors)
 
     flows = {}
+    cohorts_by_ys = {}
     field_keys = list(fields.keys())
     sector_keys = list(sectors.keys())
     level_keys = list(levels.keys())
@@ -67,8 +81,9 @@ def parse_heo08(data):
                         if val is not None and val > 0:
                             key = (lvl_code, int(ys_code), f_code, s_code)
                             flows[key] = flows.get(key, 0) + val
+                            cohorts_by_ys.setdefault(int(ys_code), set()).add(int(yr))
 
-    return flows, valid_fields, valid_sectors
+    return flows, valid_fields, valid_sectors, {k: sorted(v) for k, v in cohorts_by_ys.items()}
 
 def parse_heo12(data):
     print("Processing HEO12 (National Median Earnings)...")
@@ -155,22 +170,27 @@ def parse_heo16(data):
                         val = values[idx]
                         if val is not None and val > 0:
                             key = (inst_code, lvl_code, int(ys_code), f_code)
-                            if key not in inst_earnings_map:
-                                inst_earnings_map[key] = []
-                            inst_earnings_map[key].append(val)
+                            inst_earnings_map.setdefault(key, {})[int(yr)] = val
 
-    averaged_inst_earnings = {}
-    for k, v_list in inst_earnings_map.items():
-        averaged_inst_earnings[k] = round(sum(v_list) / len(v_list))
+    # Per key: own average, the cohorts it covers, and the national ('-')
+    # average over exactly those cohorts (same table, same definitions).
+    result = {}
+    for (inst_code, lvl_code, ys, f_code), by_cohort in inst_earnings_map.items():
+        cohorts = sorted(by_cohort)
+        own = round(sum(by_cohort.values()) / len(by_cohort))
+        nat_vals = inst_earnings_map.get(('-', lvl_code, ys, f_code), {})
+        matched = [nat_vals[c] for c in cohorts if c in nat_vals]
+        nat = round(sum(matched) / len(matched)) if len(matched) == len(cohorts) else 0
+        result[(inst_code, lvl_code, ys, f_code)] = (own, cohorts, nat)
 
-    return averaged_inst_earnings, insts
+    return result, insts
 
 def main():
     data_heo08 = fetch_json_stat(URL_HEO08)
     data_heo12 = fetch_json_stat(URL_HEO12)
     data_heo16 = fetch_json_stat(URL_HEO16)
 
-    flows, fields_meta, sectors_meta = parse_heo08(data_heo08)
+    flows, fields_meta, sectors_meta, cohorts_by_ys = parse_heo08(data_heo08)
     national_earnings = parse_heo12(data_heo12)
     inst_earnings, insts_meta = parse_heo16(data_heo16)
 
@@ -220,7 +240,7 @@ def main():
         'TS': 'Technological University of the Shannon (TUS)',
         'SE': 'South East Technological University (SETU)',
         'RC': 'Royal College of Surgeons in Ireland (RCSI)',
-        'NC': 'National College of Art and Design (NCAD)',
+        'AD': 'National College of Art and Design (NCAD)',
         'DK': 'Dundalk Institute of Technology'
     }
 
@@ -238,11 +258,18 @@ def main():
             "tables": [
                 "HEO08 (Graduate Sector of Employment)",
                 "HEO12 (National Graduate Earnings)",
-                "HEO14 (Graduates by Higher Education Institution)",
                 "HEO16 (Graduate Earnings by Institution)"
             ],
             "url": "https://data.cso.ie",
-            "description": "10-year longitudinal analysis of Irish university graduates tracking sectors and earnings by institution and field.",
+            "description": "Sector of employment and earnings of Irish graduates 1 to 10 years after graduation, by field and institution. Each horizon pools all graduating cohorts the CSO has published for it.",
+            "cohortsByYearsSince": {str(ys): cohorts_by_ys.get(ys, []) for ys in [1, 2, 3, 5, 8, 10]},
+            "latestEarningsYear": max(c + ys for ys, cs in cohorts_by_ys.items() for c in cs),
+            "method": {
+                "pooling": "Each years-since-graduation value pools all published graduating cohorts for that horizon; Year 1 and Year 10 are different cohorts.",
+                "earnings": "Unweighted average of cohort P50 (median) weekly earnings, nominal euro; annual equivalent = weekly x 52.",
+                "population": "Young graduates in substantial employment in Ireland only (CSO definition); graduates working abroad are not included.",
+                "institutions": "Institution values are never filled in from national figures; the national benchmark for an institution is averaged over the same cohorts."
+            },
             "nfq_levels": {
                 "all": "All Qualifications Combined",
                 "level_8": "NFQ Level 8 (Honours Bachelor)",
@@ -314,16 +341,17 @@ def main():
             for ys in target_years_since:
                 inst_map = {}
                 for f_code, f_name in friendly_fields.items():
-                    # If specific institution has earnings, use them; fallback to national benchmark
-                    wk = inst_earnings.get((inst_code, lvl_code, ys, f_code))
-                    if not wk:
-                        wk = national_earnings.get((lvl_code, ys, f_code), 0)
+                    # No fallback: an unpublished institution value stays 0 and is hidden.
+                    wk, cohorts, nat = inst_earnings.get((inst_code, lvl_code, ys, f_code), (0, [], 0))
 
                     inst_map[f_code] = {
                         "fieldId": f_code,
                         "fieldName": f_name,
                         "weeklyMedianEur": wk,
-                        "annualEquivalentEur": wk * 52 if wk > 0 else 0
+                        "annualEquivalentEur": wk * 52 if wk > 0 else 0,
+                        "cohorts": cohorts,
+                        "nationalMatchedWeeklyEur": nat,
+                        "nationalMatchedAnnualEur": nat * 52 if nat > 0 else 0
                     }
                 result["institutionEarnings"][inst_code][lvl_name][str(ys)] = inst_map
 

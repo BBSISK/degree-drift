@@ -99,7 +99,7 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Source Database 1</span>
                   <h5 className="font-bold text-white text-xs">HEA Student Records System (SRS)</h5>
                   <p className="text-slate-400 text-[11px]">
-                    Maintains the record of every student graduating from Irish higher education: exact field of study, NFQ level (7, 8, 9, 10), higher education institution, and graduation year.
+                    Holds the record of every student graduating from Irish higher education: field of study, NFQ level (6 to 10), higher education institution and graduation year.
                   </p>
                 </div>
 
@@ -113,7 +113,7 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
-                <h4 className="text-sm font-bold text-white">Why This Flow Is Exact (Not an Estimate)</h4>
+                <h4 className="text-sm font-bold text-white">What Each Flow Means</h4>
                 <p>
                   By joining these two databases on pseudo-anonymized PPSNs (Protected Identifier Keys), the CSO produced <strong>Table HEO08</strong>. 
                 </p>
@@ -122,10 +122,10 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                   <code className="block my-1.5 p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-cyan-300 font-mono">
                     (Graduation Cohort, NACE Sector, Field of Study, NFQ Level, Years Since Graduation)
                   </code>
-                  The value in that cell represents the <strong>literal headcount</strong> of graduates from that field who are registered employees in that specific NACE sector.
+                  Each cell is a headcount, rounded by the CSO to the nearest 10, of graduates from that field employed in that NACE sector. It covers <strong>young graduates in substantial employment in Ireland</strong>; graduates working abroad are not included.
                 </p>
                 <p>
-                  Our Sankey visualization directly queries this joint distribution. There is <strong>no probabilistic guessing or synthetic imputation</strong>; every ribbon represents verified administrative tax and graduation data.
+                  The Sankey shows this distribution with no modelling or imputation. Each "years since graduation" view <strong>pools every graduating cohort the CSO has published for that horizon</strong>: Year 1 covers 2010–2022 graduates, Year 5 covers 2010–2018, and Year 10 only 2010–2013 (latest data: 2023). Year 1 and Year 10 are therefore not the same graduates. Ribbon counts are summed across those cohorts; percentages are shares within each field or sector.
                 </p>
               </div>
             </div>
@@ -139,34 +139,34 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                   <span>How Institutions Are Layered (Statistical Disclosure Control)</span>
                 </h4>
                 <p>
-                  Why did the CSO not release a single table combining all 33 Higher Education Institutions, 11 fields, 14 economic sectors, 6 NFQ levels, and 10 graduation years?
+                  The CSO does not publish one table combining institution, field, sector, NFQ level and years since graduation.
                 </p>
                 <p>
-                  Under <strong>Section 33 of the Statistics Act 1993</strong>, strict statistical disclosure control applies: any cell with fewer than 10 individuals must be suppressed to prevent personal re-identification. In a single 6-dimensional table, hundreds of cells would hold only 1 or 2 graduates.
+                  Under the <strong>Statistics Act 1993</strong>, the CSO must protect confidentiality, so it applies statistical disclosure control: small cells are suppressed and counts are rounded. A single table with every dimension would be mostly small cells.
                 </p>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
                 <h4 className="text-sm font-bold text-white">The Dual-Layer Architecture</h4>
                 <p>
-                  To maximize statistical depth while adhering to disclosure limits, the CSO releases two complementary, harmonized cubes:
+                  Instead, the dashboard combines separate CSO tables from the same linkage:
                 </p>
                 <div className="space-y-2 pt-1">
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
                     <strong className="text-indigo-400 block mb-0.5">Macroeconomic Flow Layer (CSO Table HEO08)</strong>
                     <span className="text-slate-400 text-[11px]">
-                      Captures the complete national sector destination flow across fields of study and types of institutes (Universities vs. Technological Universities / IoTs).
+                      National sector of employment by field of study, NFQ level and years since graduation. It has no institution breakdown.
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
                     <strong className="text-cyan-400 block mb-0.5">Institutional Earnings Layer (CSO Table HEO16)</strong>
                     <span className="text-slate-400 text-[11px]">
-                      Tracks verified Revenue PAYE median earnings by specific higher education institution (e.g. Maynooth University, Trinity, UCD, TU Dublin, MTU, ATU) across 1 to 10 years post-graduation.
+                      Median earnings by institution, field, NFQ level and years since graduation. Newer technological universities only appear from their founding cohorts (e.g. TU Dublin from 2018; MTU from 2020; ATU, TUS and SETU from 2021), so they have no Year 10 figures yet.
                     </span>
                   </div>
                 </div>
                 <p className="text-slate-400 pt-1">
-                  When you select an institution in the dashboard dropdown, the salary trajectories and variance indicators dynamically switch from the national baseline to that institution's verified Revenue data.
+                  When you select an institution, the earnings chart shows that institution's published figures only. Fields the CSO did not publish are left out, never filled in from the national figure. The "vs nat." comparison uses the national median for the <strong>same graduating cohorts</strong>, so cohort timing and wage inflation don't distort it.
                 </p>
               </div>
             </div>
@@ -197,7 +197,7 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
                   This application processes <strong>zero Personally Identifiable Information (PII)</strong>.
                 </p>
                 <p>
-                  Under statutory obligations in the Statistics Act 1993, the CSO applies statistical disclosure control prior to open-data release. Any micro-cohort with fewer than 10 individuals is statistically suppressed to prevent personal re-identification.
+                  Under the Statistics Act 1993, the CSO applies statistical disclosure control (suppression and rounding) before publishing open data, so no individual can be identified.
                 </p>
               </div>
 

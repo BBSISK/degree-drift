@@ -12,19 +12,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, selecte
 
   if (!isOpen) return null;
 
-  const linkedInPostText = `Where do Irish university graduates actually end up 5 to 10 years after college?
+  const linkedInPostText = `Where do Irish university graduates actually work, 1 to 10 years after graduating?
 
-Most people assume their college major locks them into one industry. I dug into the Central Statistics Office (CSO) open data (HEO08 & HEO12)—which uniquely links university graduation records directly with Revenue tax data—and built an interactive 10-year longitudinal dashboard: "Degree Drift".
+Most people assume their degree locks them into one industry. I used Central Statistics Office (CSO) open data (HEO08, HEO12, HEO16), which links graduation records with Revenue PAYE records, to build an interactive dashboard: "Degree Drift".
 
-A few striking takeaways:
-1. The Tech Inflow Paradox: At Year 5, more graduates working in the Irish Tech sector hold Business degrees (26.9%) and Arts & Humanities degrees (22.6%) than pure ICT Computer Science degrees (24.4%).
-2. The Arts Landing Pad: In Year 1, over 27% of Arts grads work in retail. By Year 5 and 10, that drops to ~10% as Education (36%), Tech (10.5%), and Professional Services absorb them.
-3. Field Stickiness: Education (87%) and Health (68%) have the highest retention in their core sectors, while Sciences and Humanities act as Swiss Army knives across the economy.
-4. Earning Velocity: While starting salaries across many disciplines are relatively close in Year 1, ICT and Engineering compound fastest, reaching a median of €70k+ at Year 10.
+What the data shows (honours degree, NFQ Level 8, national):
+1. Tech isn't just for computing graduates: at Year 5, more people in the Irish tech sector hold a Business degree (26.9%) than an ICT degree (24.4%). Business and Arts & Humanities together make up 49.5%, about twice the ICT share.
+2. The Arts "landing pad": in Year 1, 27% of Arts & Humanities graduates work in retail. By Year 5 that's about 10%, and by Year 10 7%, as Education (36%), Tech (10.5%) and Professional Services (9.4%) take them in.
+3. Field stickiness: Education (87.5%) and Health & Welfare (68.7%) keep the most graduates in their own sector in Year 1. Social Sciences and Natural Sciences graduates spread most widely across the economy.
+4. Earnings: ICT has the highest median at Year 10 (€70.2k), but Arts & Humanities (+146%) and Business (+137%) grow faster from Year 1 than ICT (+123%).
 
-Interactive dashboard link & open-source code: [Paste Link Here]
+How to read it: each "years since graduation" pools every cohort the CSO has published for that horizon (Year 1: 2010–2022 graduates; Year 10: 2010–2013). It covers graduates in substantial employment in Ireland, so those working abroad aren't included.
 
-Data source: CSO Higher Education Outcomes (HEO08 & HEO12), linked with Revenue tax returns.
+Interactive dashboard & open-source code: [Paste Link Here]
+
+Data: CSO Higher Education Outcomes (HEO08, HEO12, HEO16), CC BY 4.0.
 
 #DataAnalytics #HigherEducation #Ireland #CSO #TechCareers #Engineering`;
 

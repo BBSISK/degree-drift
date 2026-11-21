@@ -128,8 +128,8 @@ export const FIELD_CONFIGS: Record<string, FieldVisualConfig> = {
 export interface SalaryYearStory {
   year: number;
   label: string;
-  calendarYear: number;
-  calendarYearLabel: string;
+  /** Graduating cohorts the CSO has published for this horizon (pooled). */
+  cohortLabel: string;
   yearOfTen: string;
   decadeProgressPct: number;
   tagline: string;
@@ -140,92 +140,151 @@ export interface SalaryYearStory {
   accentColor: string;
 }
 
+/**
+ * Graduating cohorts pooled at each "years since graduation" horizon.
+ * Matches metadata.cohortsByYearsSince in public/data.json (CSO HEO12/HEO16,
+ * latest earnings year 2023). Year 1 and Year 10 are different graduates.
+ */
+export const COHORT_LABELS: Record<number, string> = {
+  1: '2010–22 grads',
+  2: '2010–21 grads',
+  3: '2010–20 grads',
+  5: '2010–18 grads',
+  8: '2010–15 grads',
+  10: '2010–13 grads',
+};
+
+export const STORY_SCOPE_LABEL = 'National • NFQ Level 8';
+
+export const POOLING_NOTE =
+  'Each year pools every graduating cohort the CSO has published for that horizon, so Year 1 and Year 10 are not the same graduates. Earnings: average of cohort median weekly pay × 52, nominal €.';
+
+const ACCENTS: Record<number, string> = {
+  1: '#38bdf8',
+  2: '#818cf8',
+  3: '#06b6d4',
+  5: '#10b981',
+  8: '#a855f7',
+  10: '#f59e0b',
+};
+
+/**
+ * Curated narrative for the NATIONAL, NFQ LEVEL 8 view only.
+ * Every figure below is taken from public/data.json (timelines.level_8.<year>.earnings).
+ */
 export const SALARY_STORY_BEATS: Record<number, SalaryYearStory> = {
   1: {
     year: 1,
     label: 'Year 1',
-    calendarYear: 2016,
-    calendarYearLabel: '2016 (Year 1)',
-    yearOfTen: 'Year 1 of 10 • 2016 (Career Entry)',
+    cohortLabel: COHORT_LABELS[1],
+    yearOfTen: 'Year 1 of 10 • Career entry',
     decadeProgressPct: 10,
-    tagline: 'Initial Graduate Entry & Public Sector Scales',
-    headline: 'Public Sector Entry Bands Lead Starting Salaries',
-    detail: 'Education (€36,192) and Health & Welfare (€34,424) enter with the highest starting medians due to standardized public pay scales. Tech begins at #3 (€31,460).',
-    notableChange: 'Education & Health lead; Tech starts at #3',
+    tagline: 'Graduate entry',
+    headline: 'Education and Health Lead at Year 1',
+    detail: 'Education (€36,192) and Health & Welfare (€34,424) have the highest Year 1 medians, in line with public-sector pay scales. ICT starts at #3 (€31,460).',
+    notableChange: 'Education & Health lead; ICT starts at #3',
     topField: 'Education (€36,192/yr)',
-    accentColor: '#38bdf8',
+    accentColor: ACCENTS[1],
   },
   2: {
     year: 2,
     label: 'Year 2',
-    calendarYear: 2017,
-    calendarYearLabel: '2017 (Year 2)',
-    yearOfTen: 'Year 2 of 10 • 2017 (Corporate Shift)',
+    cohortLabel: COHORT_LABELS[2],
+    yearOfTen: 'Year 2 of 10',
     decadeProgressPct: 20,
-    tagline: 'First Corporate Step & Trajectory Adjustments',
-    headline: 'Education Holds Top Spot; Private STEM Accelerates',
-    detail: 'Education (€37,700) and Health (€36,660) maintain top 2. ICT jumps to €35,880 (+14%), rapidly closing the distance to #1.',
-    notableChange: 'ICT narrows gap to #1; Social Sciences overtakes Services',
+    tagline: 'Early career',
+    headline: 'Education Holds #1; ICT Closes In',
+    detail: 'Education (€37,700) and Health (€36,660) stay top 2. ICT rises to €35,880 (+14% on Year 1).',
+    notableChange: 'ICT narrows the gap to #1; Social Sciences passes Services',
     topField: 'Education (€37,700/yr)',
-    accentColor: '#818cf8',
+    accentColor: ACCENTS[2],
   },
   3: {
     year: 3,
     label: 'Year 3',
-    calendarYear: 2018,
-    calendarYearLabel: '2018 (Year 3)',
-    yearOfTen: 'Year 3 of 10 • 2018 (The Tech Crossover)',
+    cohortLabel: COHORT_LABELS[3],
+    yearOfTen: 'Year 3 of 10',
     decadeProgressPct: 30,
-    tagline: 'The Crossover Milestone',
-    headline: 'ICT Surges to #1 Overtaking Education & Health',
-    detail: 'Information & Communications Tech reaches €40,300/yr (+28% since Y1), seizing 1st place. Business climbs past Agriculture.',
-    notableChange: 'ICT leaps from #3 to #1 (+2 rank swap); Business climbs',
+    tagline: 'The crossover',
+    headline: 'ICT Moves to #1, Past Education and Health',
+    detail: 'ICT reaches €40,300/yr (+28% on Year 1) and takes 1st place. Business moves past Agriculture.',
+    notableChange: 'ICT climbs from #3 to #1; Business climbs',
     topField: 'ICT (€40,300/yr)',
-    accentColor: '#06b6d4',
+    accentColor: ACCENTS[3],
   },
   5: {
     year: 5,
     label: 'Year 5',
-    calendarYear: 2020,
-    calendarYearLabel: '2020 (Year 5)',
-    yearOfTen: 'Year 5 of 10 • 2020 (Mid-Career Consolidation)',
+    cohortLabel: COHORT_LABELS[5],
+    yearOfTen: 'Year 5 of 10',
     decadeProgressPct: 50,
-    tagline: 'Mid-Career Compounding Surge',
-    headline: 'Engineering Claims #2; STEM Takes Top Two Spots',
-    detail: 'Engineering & Construction overtakes both Health and Education into 2nd place (€45,032/yr). ICT widens its #1 lead to €49,244/yr.',
-    notableChange: 'Engineering surges +2 spots into #2; STEM dominates top 2',
+    tagline: 'Mid-career',
+    headline: 'Engineering Takes #2; STEM Holds the Top Two',
+    detail: 'Engineering & Construction passes Health and Education into 2nd place (€45,032/yr). ICT leads at €49,244/yr.',
+    notableChange: 'Engineering up 2 places to #2',
     topField: 'ICT (€49,244/yr)',
-    accentColor: '#10b981',
+    accentColor: ACCENTS[5],
   },
   8: {
     year: 8,
     label: 'Year 8',
-    calendarYear: 2023,
-    calendarYearLabel: '2023 (Year 8)',
-    yearOfTen: 'Year 8 of 10 • 2023 (Private Compounding)',
+    cohortLabel: COHORT_LABELS[8],
+    yearOfTen: 'Year 8 of 10',
     decadeProgressPct: 80,
-    tagline: 'Private Sector Compounding Pulls Ahead',
-    headline: 'Business & Natural Sciences Push Past Public Scales',
-    detail: 'Natural Sciences (€52,312) and Business (€52,104) both climb +2 spots into #3 and #4, pushing Education and Health down to #5 and #6.',
-    notableChange: 'Natural Sciences & Business jump into top 4; Health falls -3',
+    tagline: 'Private-sector pay pulls ahead',
+    headline: 'Natural Sciences and Business Pass Education and Health',
+    detail: 'Natural Sciences (€52,312) and Business (€52,104) each climb 2 places to #3 and #4; Education and Health drop to #5 and #6.',
+    notableChange: 'Natural Sciences & Business into top 4; Health down 3',
     topField: 'ICT (€61,984/yr)',
-    accentColor: '#a855f7',
+    accentColor: ACCENTS[8],
   },
   10: {
     year: 10,
     label: 'Year 10',
-    calendarYear: 2025,
-    calendarYearLabel: '2025 (Year 10)',
-    yearOfTen: 'Year 10 of 10 • 2025 (Full Decade Horizon)',
+    cohortLabel: COHORT_LABELS[10],
+    yearOfTen: 'Year 10 of 10 • 2010–13 graduates only',
     decadeProgressPct: 100,
-    tagline: 'The Decade Horizon',
-    headline: 'ICT Crosses €70,000; Business Joins Top 3',
-    detail: 'ICT median hits €70,200/yr (+123% since Y1). Business & Law enters top 3 (€58,552, +137% growth). The initial #1 (Education) now sits at #5.',
-    notableChange: 'ICT reaches €70.2k; Business enters top 3; Initial #1 drops to #5',
+    tagline: 'Ten years on',
+    headline: 'ICT Highest at €70,200; Business Joins Top 3',
+    detail: 'ICT is highest at €70,200/yr (+123% on Year 1). Business reaches #3 (€58,552, +137%). Fastest relative growth is Arts & Humanities (+146%). Year 1 leader Education is now #5.',
+    notableChange: 'ICT highest; Arts grows fastest; Education #1 → #5',
     topField: 'ICT (€70,200/yr)',
-    accentColor: '#f59e0b',
+    accentColor: ACCENTS[10],
   },
 };
+
+/** True only for the view the curated beats were written for. */
+export function isCuratedScope(nfqLabel?: string, institutionName?: string): boolean {
+  const lvl8 = !nfqLabel || nfqLabel.startsWith('Level 8');
+  const national =
+    !institutionName || institutionName.startsWith('National') || institutionName.startsWith('All Institutions');
+  return lvl8 && national;
+}
+
+/**
+ * Returns the curated beat for the national Level 8 view, otherwise a
+ * neutral caption computed from the rows actually on screen.
+ */
+export function getStoryBeat(
+  year: number,
+  rows: ProcessedSalaryRow[],
+  curated: boolean
+): SalaryYearStory {
+  const base = SALARY_STORY_BEATS[year] || SALARY_STORY_BEATS[1];
+  if (curated) return base;
+  const top = rows[0];
+  const topText = top ? `${top.shortName} (€${top.annualEquivalentEur.toLocaleString()}/yr)` : 'No published figures';
+  return {
+    ...base,
+    tagline: `Year ${year}`,
+    headline: top ? `Highest median at Year ${year}: ${top.fieldName}` : `No CSO figures published for Year ${year}`,
+    detail: top
+      ? `${rows.length} field${rows.length === 1 ? '' : 's'} with published figures. Fields the CSO did not publish for this selection are left out.`
+      : 'The CSO has not published earnings for this selection (suppressed or no cohort has reached this year yet).',
+    notableChange: top ? `Top: ${topText}` : 'No published figures',
+    topField: topText,
+  };
+}
 
 export interface ProcessedSalaryRow {
   fieldId: string;

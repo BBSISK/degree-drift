@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dataset, NfqKey } from './types';
+import { Dataset, NfqKey, FieldEarnings } from './types';
 import { Header } from './components/Header';
 import { SankeyChart } from './components/SankeyChart';
 import { TimelapseController } from './components/TimelapseController';
@@ -94,16 +94,34 @@ export const App: React.FC = () => {
 
   const isSpecificInstitution = selectedInstitution !== '-';
   const institutionName = dataset.metadata.institutions[selectedInstitution] || 'All Institutions';
+  // Institution values are never filled in from the national figure: an
+  // unpublished value is 0 and is hidden by the charts.
   const activeEarnings = isSpecificInstitution
-    ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(selectedYear)] || currentTimeline.earnings
+    ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(selectedYear)] || {}
+    : currentTimeline.earnings;
+
+  // For institution comparisons, use the national median for the SAME cohorts
+  // (nationalMatched*), not the pooled national figure.
+  const comparisonEarnings: Record<string, FieldEarnings> = isSpecificInstitution
+    ? Object.fromEntries(
+        Object.entries(activeEarnings).map(([fid, e]) => [
+          fid,
+          {
+            fieldId: e.fieldId,
+            fieldName: e.fieldName,
+            weeklyMedianEur: e.nationalMatchedWeeklyEur ?? 0,
+            annualEquivalentEur: e.nationalMatchedAnnualEur ?? 0,
+          },
+        ])
+      )
     : currentTimeline.earnings;
 
   const allEarningsByYear = availableYears.reduce((acc, yr) => {
     acc[yr] = isSpecificInstitution
-      ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(yr)] || currentTimelineGroup[String(yr)]?.earnings || {}
+      ? dataset.institutionEarnings[selectedInstitution]?.[selectedNfq]?.[String(yr)] || {}
       : currentTimelineGroup[String(yr)]?.earnings || {};
     return acc;
-  }, {} as Record<number, Record<string, any>>);
+  }, {} as Record<number, Record<string, FieldEarnings>>);
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 transition-all ${isCinemaMode ? 'p-2 sm:p-6' : ''}`}>
@@ -131,13 +149,13 @@ export const App: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div>
               <h2 className="text-xl font-black text-white flex items-center space-x-2">
-                <span>Degree Drift: 10-Year Career Migration</span>
+                <span>Degree Drift: Years 1–10 After Graduation</span>
                 <span className="text-[11px] font-semibold text-cyan-400 bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded-full uppercase">
                   CSO Ireland
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Tracking Irish higher education graduates across actual economic sectors and Revenue tax records
+                Where Irish graduates work and what they earn, 1 to 10 years after graduation (CSO, Revenue PAYE records)
               </p>
             </div>
             <button
@@ -168,6 +186,11 @@ export const App: React.FC = () => {
 
         {/* The Core Sankey Visualization */}
         <section>
+          {isSpecificInstitution && (
+            <p className="mb-2 text-xs text-amber-300/90 bg-amber-950/30 border border-amber-800/40 rounded-xl px-3 py-2">
+              Sector flows are national: the CSO doesn't publish sector of employment by institution. The earnings chart below is specific to {institutionName}.
+            </p>
+          )}
           <SankeyChart
             flows={currentTimeline.flows}
             selectedSourceId={selectedSourceId}
@@ -184,7 +207,7 @@ export const App: React.FC = () => {
         <section>
           <SalaryTrajectory
             earnings={activeEarnings}
-            nationalEarnings={currentTimeline.earnings}
+            nationalEarnings={comparisonEarnings}
             allEarningsByYear={allEarningsByYear}
             selectedInstitutionName={institutionName}
             isSpecificInstitution={isSpecificInstitution}

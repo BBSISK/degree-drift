@@ -16,7 +16,9 @@ import {
 import { FieldEarnings } from '../types';
 import {
   computeRankedSalaryRows,
-  SALARY_STORY_BEATS,
+  COHORT_LABELS,
+  getStoryBeat,
+  isCuratedScope,
 } from '../utils/salaryConstants';
 import {
   drawSalaryGraphicToCanvas,
@@ -70,14 +72,13 @@ export const LinkedInGraphicModal: React.FC<LinkedInGraphicModalProps> = ({
     const curEarnings = allEarningsByYear[currentYear] || {};
     const prevEarnings = prevYear ? allEarningsByYear[prevYear] : undefined;
     const y1Earnings = allEarningsByYear[1] || curEarnings;
-    const story = SALARY_STORY_BEATS[currentYear] || SALARY_STORY_BEATS[1];
-
     const rows = computeRankedSalaryRows(
       curEarnings,
       prevEarnings,
       y1Earnings,
       75000
     );
+    const story = getStoryBeat(currentYear, rows, isCuratedScope(nfqLabel, institutionName));
 
     drawSalaryGraphicToCanvas(canvasRef.current, {
       rows,
@@ -165,26 +166,32 @@ export const LinkedInGraphicModal: React.FC<LinkedInGraphicModalProps> = ({
     }
   };
 
-  // Copy LinkedIn caption with 2015 -> 2025 cohort dates
-  const story = SALARY_STORY_BEATS[currentYear] || SALARY_STORY_BEATS[1];
-  const linkedInPostText = `Where do Irish university degrees actually lead over a full decade (2015 → 2025)?
+  // LinkedIn caption. The curated text describes the national Level 8 view only.
+  const curatedCaption = isCuratedScope(nfqLabel, institutionName);
+  const linkedInPostText = curatedCaption
+    ? `What do Irish graduates earn 1, 3, 5 and 10 years after graduating, by field of study?
 
-I built a dynamic salary trajectory chart tracking the 2015 graduate cohort across 10 years of verified Revenue PAYE tax records (CSO Tables HEO12 & HEO16).
+I built a salary chart from CSO open data (tables HEO12 & HEO16), which links graduation records to Revenue PAYE records. National figures, NFQ Level 8 (honours degree):
 
-Here is how graduate earnings evolved from 2015 to 2025:
+• Year 1: Education (€36.2k) and Health (€34.4k) have the highest medians, in line with public-sector pay scales. ICT is #3 (€31.5k).
+• Year 3: ICT moves to #1 (€40.3k).
+• Year 5: Engineering & Construction moves up to #2 (€45.0k); ICT leads at €49.2k.
+• Year 8: Natural Sciences (€52.3k) and Business (€52.1k) pass Education and Health.
+• Year 10: ICT is highest at €70.2k. Business is #3 (€58.6k). Education, #1 at Year 1, is #5.
 
-• Year 1 (2016): Public sector professions lead. Education (€36.2k) and Health (€34.4k) top starting earnings due to standardized public entry scales. Tech begins at #3 (€31.5k).
-• Year 2 (2017): Corporate transitions begin. Education & Health hold top 2; ICT closes gap at €35.9k.
-• Year 3 (2018): The Tech Crossover. ICT surges past both Education and Health to seize #1 (€40.3k/yr).
-• Year 5 (2020): Engineering & Construction jumps +2 spots to #2 (€45.0k/yr). STEM majors take the top 2 national spots.
-• Year 8 (2023): Private-sector compounding widens the gap. Business (€52.1k) and Natural Sciences (€52.3k) overtake starting leaders into top 4.
-• Year 10 (2025): The Decade Horizon. ICT reaches €70,200/yr median (+123% growth). Business enters top 3 at €58,552/yr (+137% growth). Initial #1 (Education) now sits at #5.
+ICT pays most, but it doesn't grow fastest: Arts & Humanities grows +146% from Year 1 to Year 10 and Business +137%, against +123% for ICT.
 
-Data source: Central Statistics Office Ireland (HEO12 & HEO16 linked Revenue PAYE tax records).
-Tracking window: 2015 Graduation Cohort → 2025 Decade Horizon.
-Degree Level: ${nfqLabel}.
+How to read it: each year pools every graduating cohort the CSO has published for that horizon. Year 1 covers 2010–2022 graduates; Year 10 only 2010–2013 graduates (latest earnings data: 2023). Figures are the average of cohort median weekly pay × 52, in nominal euro, for graduates in substantial employment in Ireland.
 
-#HigherEducation #Ireland #CSO #DataAnalytics #Salaries #Careers #TechInIreland #Engineering #Graduates`;
+#HigherEducation #Ireland #CSO #OpenData #DataAnalytics #Graduates`
+    : `What do Irish graduates earn 1 to 10 years after graduating?
+
+I built a salary chart from CSO open data (tables HEO12 & HEO16, Revenue PAYE records).
+Selection: ${institutionName} • ${nfqLabel}.
+
+Each year pools every graduating cohort the CSO has published for that horizon (Year 1: 2010–2022 graduates; Year 10: 2010–2013). Fields the CSO did not publish are left out. Figures are the average of cohort median weekly pay × 52, in nominal euro.
+
+#HigherEducation #Ireland #CSO #OpenData #DataAnalytics #Graduates`;
 
   const handleCopyPost = () => {
     navigator.clipboard.writeText(linkedInPostText);
@@ -219,7 +226,7 @@ Degree Level: ${nfqLabel}.
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                High-resolution graphic showing the 10-year transition from graduate entry to decade horizon
+                High-resolution graphic of median earnings by field, 1 to 10 years after graduation
               </p>
             </div>
 
@@ -318,7 +325,6 @@ Degree Level: ${nfqLabel}.
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
             {availableYears.map((yr) => {
               const isActive = currentYear === yr;
-              const yrBeat = SALARY_STORY_BEATS[yr];
               return (
                 <button
                   key={yr}
@@ -326,7 +332,7 @@ Degree Level: ${nfqLabel}.
                     setIsPlaying(false);
                     setCurrentYear(yr);
                   }}
-                  title={`Year ${yr} (${yrBeat?.calendarYear})`}
+                  title={`Year ${yr}: ${COHORT_LABELS[yr]}`}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold font-mono-numbers transition flex flex-col items-center ${
                     isActive
                       ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
@@ -334,7 +340,6 @@ Degree Level: ${nfqLabel}.
                   }`}
                 >
                   <span>Y{yr}</span>
-                  <span className="text-[9px] opacity-75">'{String(yrBeat?.calendarYear || '').slice(2)}</span>
                 </button>
               );
             })}
@@ -342,8 +347,8 @@ Degree Level: ${nfqLabel}.
 
           <div className="text-xs text-slate-400 text-right truncate">
             <span>Current: </span>
-            <strong className="text-white">Year {currentYear} ({story.calendarYear})</strong>
-            <span className="text-slate-500"> • 2015 → 2025 Horizon</span>
+            <strong className="text-white">Year {currentYear} of 10</strong>
+            <span className="text-slate-500"> • {COHORT_LABELS[currentYear]}</span>
           </div>
         </div>
 

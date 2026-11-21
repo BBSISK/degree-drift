@@ -1,6 +1,6 @@
 # 🎓 Degree Drift: Where Do Irish University Graduates Actually Go?
 
-> An interactive 10-year dashboard that follows Irish graduates from lecture hall into the sectors of the economy where they actually work, using CSO data linked to Revenue tax records, by field of study and higher education institution.
+> An interactive dashboard showing where Irish graduates work and what they earn 1 to 10 years after graduation, by field of study and higher education institution, using CSO tables that link graduation records with Revenue PAYE records.
 
 **Live:** https://degree-drift.onrender.com/
 
@@ -13,7 +13,7 @@
 
 Most people assume their degree locks them into one industry. What does the administrative data show?
 
-The Central Statistics Office (CSO) and the Higher Education Authority (HEA) linked graduation records with **Revenue PAYE tax records**, so each graduating cohort can be followed at **1, 2, 3, 5, 8 and 10 years after graduation**.
+The Central Statistics Office (CSO) and the Higher Education Authority (HEA) linked graduation records with **Revenue PAYE tax records**, so the CSO can publish outcomes for each graduating cohort at **1 to 10 years after graduation**. The dashboard uses 1, 2, 3, 5, 8 and 10.
 
 **Degree Drift** shows that movement across the Irish economy, for every field of study and for the major universities and technological universities.
 
@@ -21,17 +21,27 @@ The Central Statistics Office (CSO) and the Higher Education Authority (HEA) lin
 
 ## 🔍 What the data shows
 
-1. **The tech inflow paradox**
-   * At Year 5, **more graduates working in the Irish tech sector hold Business degrees (26.9%) and Arts & Humanities degrees (22.6%) than ICT / Computer Science degrees (24.4%)**.
-   * Dublin's multinational tech sector takes in many non-CS graduates, in operations, policy, customer solutions, sales and product roles.
+Figures are for **NFQ Level 8 (honours degree), all institutions**. All of them are checked against `public/data.json` by `data_pipeline/check_data.py`.
+
+1. **Tech isn't just for computing graduates**
+   * At Year 5, more graduates working in the Irish tech sector hold a **Business** degree (**26.9%**) than an **ICT** degree (**24.4%**). Business and **Arts & Humanities** (22.6%) together make up **49.5%**, about twice the ICT share.
 2. **The "landing pad" effect**
-   * In Year 1, over **27.1%** of Arts & Humanities graduates work in Wholesale & Retail.
-   * By Years 5 and 10, retail falls to about 10% as Education (36%), Tech (10.5%) and Professional / Scientific (9.4%) take them in.
+   * In Year 1, **27.1%** of Arts & Humanities graduates work in Wholesale & Retail (42.9% with Hospitality).
+   * Retail falls to 10.5% by Year 5 and 7.1% by Year 10, as Education (36.0%), Tech (10.5%) and Professional / Scientific (9.4%) take them in by Year 10.
+   * This holds when following only the 2010–2013 graduates, so it isn't caused by pooling different cohorts.
 3. **Field stickiness**
-   * **Education** (87.5%) and **Health & Welfare** (68.7%) keep the most graduates in their own field.
-   * **Natural Sciences** and **Arts & Humanities** graduates spread evenly across many sectors.
-4. **Earnings by institution (CSO Table HEO16)**
-   * At Years 5 and 10, choosing an institution (for example **Maynooth University**, **Trinity**, **UCD** or **TU Dublin**) shows how its graduates' earnings compare with the national figure for the same field.
+   * **Education** (87.5%) and **Health & Welfare** (68.7%) keep the most graduates in their own sector in Year 1.
+   * **Social Sciences** and **Natural Sciences** graduates spread most widely across sectors.
+4. **Earnings**
+   * ICT has the highest median at Year 10 (€70,200 a year), but it doesn't grow fastest. From Year 1 to Year 10, Arts & Humanities grows +146%, Business +137% and ICT +123%.
+   * Choosing an institution (for example **Maynooth University**, **Trinity**, **UCD** or **TU Dublin**) compares its graduates with the national median for the **same graduating cohorts**.
+
+### ⚠️ How to read the years
+
+* Each "years since graduation" view **pools every graduating cohort the CSO has published for that horizon**. Year 1 covers 2010–2022 graduates, Year 5 covers 2010–2018 and Year 10 only 2010–2013. The latest earnings data is for 2023. **Year 1 and Year 10 are not the same graduates.** The cohort list for each year is in `metadata.cohortsByYearsSince`.
+* Earnings are the **unweighted average of each cohort's median weekly earnings**, in nominal euro. Annual figures are weekly × 52.
+* The data covers **young graduates in substantial employment in Ireland** (CSO definition). Graduates working abroad aren't included.
+* Sector counts are rounded by the CSO to the nearest 10 and summed across the pooled cohorts.
 
 ---
 
@@ -47,7 +57,7 @@ The dashboard uses three CSO tables, all from the same HEA–Revenue linkage:
 | National earnings | **HEO12**: National Graduate Earnings | Median earnings by field, NFQ level and years since graduation |
 | Institution earnings | **HEO16**: Graduate Earnings by Institution | Median earnings by institution, field, NFQ level and years since graduation |
 
-Suppressed cells are left out rather than estimated, so a flow or line that is missing for an institution means the CSO didn't publish it.
+Suppressed cells are left out rather than estimated, so a flow or line that is missing for an institution means the CSO didn't publish it. Institution figures are never filled in from the national figure. Newer technological universities only appear from their founding cohorts (TU Dublin from 2018, MTU from 2020, ATU, TUS and SETU from 2021), so they have no Year 10 figures yet.
 
 ---
 
@@ -58,7 +68,7 @@ Suppressed cells are left out rather than estimated, so a flow or line that is m
 - **Data pipeline:** `data_pipeline/process.py` (Python standard library only) reads HEO08, HEO12 and HEO16 from the CSO PxStat REST API (`ws.cso.ie`, JSON-stat 2.0) and writes one compact file, `public/data.json`. The site loads that file once, so switching year, NFQ level or institution is instant and the site never calls the CSO API itself.
 - **Type-checked builds:** TypeScript runs in strict mode, and `npm run build` runs `tsc` before Vite, so a type error stops the build.
 - **Continuous deployment:** a GitHub Actions workflow (`.github/workflows/deploy.yml`) builds the site on every push to `main` and publishes it to GitHub Pages. `render.yaml` describes the same build as a Render static site.
-- **Not yet:** there are no automated tests and no checks on the downloaded tables, for example that each field's sector shares add up to 100%. Those are the next additions.
+- **Data checks:** `data_pipeline/check_data.py` runs in CI before every build. It checks that sector shares add up to 100%, that institution values are never national fallbacks and always have a same-cohort benchmark, that newer TUs show no Year 10 figures, and that every figure quoted in the dashboard and this README matches `public/data.json`.
 
 ---
 
@@ -74,8 +84,9 @@ Open [http://localhost:5174](http://localhost:5174).
 ### Refresh the data from the CSO API
 ```bash
 python3 data_pipeline/process.py
+python3 data_pipeline/check_data.py
 ```
-This rewrites `public/data.json`. Commit it to publish the new data.
+This rewrites `public/data.json` and checks it. If the CSO revises its tables, the checks show which quoted figures need updating. Commit `data.json` to publish the new data.
 
 ---
 

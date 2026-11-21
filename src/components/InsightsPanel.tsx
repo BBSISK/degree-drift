@@ -138,26 +138,26 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
       <div className="rounded-3xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border border-indigo-500/30 p-6 shadow-xl">
         <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2">
           <Sparkles className="w-4 h-4" />
-          <span>Key Pattern at Year {selectedYear}</span>
+          <span>Key Pattern at Year {selectedYear} (NFQ Level 8, national)</span>
         </div>
         {selectedYear === 1 && (
           <p className="text-sm text-slate-200 leading-relaxed">
-            In Year 1, over <strong className="text-white">27%</strong> of Arts & Humanities graduates and <strong className="text-white">15.7%</strong> of Business graduates are working in Retail and Hospitality while transitioning into postgraduate study or corporate entry points.
+            In Year 1, <strong className="text-white">27.1%</strong> of Arts & Humanities graduates and <strong className="text-white">15.7%</strong> of Business graduates work in Wholesale & Retail. Add Hospitality and it is <strong className="text-white">42.9%</strong> of Arts graduates.
           </p>
         )}
         {selectedYear >= 2 && selectedYear <= 3 && (
           <p className="text-sm text-slate-200 leading-relaxed">
-            By Years 2–3, the "retail landing pad" drops sharply as graduates migrate into Professional Services, Public Administration, and Tech. Teaching absorbs nearly a third of Arts graduates.
+            By Year 3, the "retail landing pad" shrinks: Arts & Humanities graduates in retail fall from 27.1% to 15.0%, while Education rises from 11.8% to 25.5% (about a quarter).
           </p>
         )}
         {selectedYear === 5 && (
           <p className="text-sm text-slate-200 leading-relaxed">
-            At Year 5, more employees in the Irish Tech sector hold <strong className="text-white">Business degrees (26.9%)</strong> and <strong className="text-white">Arts & Humanities degrees (22.6%)</strong> than pure ICT computer science degrees (24.4%), reflecting Dublin’s high volume of tech operations, policy, and business development roles.
+            At Year 5, more graduates in the Irish tech sector hold a <strong className="text-white">Business degree (26.9%)</strong> than an <strong className="text-white">ICT degree (24.4%)</strong>. Together, Business and Arts & Humanities (22.6%) make up <strong className="text-white">49.5%</strong>, about twice ICT's share.
           </p>
         )}
         {selectedYear >= 8 && (
           <p className="text-sm text-slate-200 leading-relaxed">
-            At Year 8–10, ICT and Engineering graduates show the highest salary compound rates, with median ICT earnings reaching <strong className="text-emerald-400">€70,200/year</strong>, and 9% drifting into Banking & Financial Services.
+            By Year 10, ICT has the highest median earnings (<strong className="text-emerald-400">€70,200/year</strong>), but not the fastest growth: Arts & Humanities grows +146% from Year 1 and Business +137%, against +123% for ICT. About 9% of ICT graduates work in Finance & Real Estate.
           </p>
         )}
       </div>

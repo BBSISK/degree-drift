@@ -13,6 +13,11 @@ export interface FieldEarnings {
   fieldName: string;
   weeklyMedianEur: number;
   annualEquivalentEur: number;
+  /** Institution values only: graduating cohorts behind this figure. */
+  cohorts?: number[];
+  /** Institution values only: national median averaged over the same cohorts. */
+  nationalMatchedWeeklyEur?: number;
+  nationalMatchedAnnualEur?: number;
 }
 
 export interface TimelineData {
@@ -33,6 +38,9 @@ export interface Dataset {
     fields: Record<string, string>;
     sectors: Record<string, string>;
     institutions: Record<string, string>;
+    cohortsByYearsSince?: Record<string, number[]>;
+    latestEarningsYear?: number;
+    method?: Record<string, string>;
   };
   timelines: {
     all: Record<string, TimelineData>;

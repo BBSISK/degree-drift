@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import { Play, Pause, RotateCcw, TrendingUp, Sparkles, Award, Clock } from 'lucide-react';
 import { FieldEarnings } from '../types';
 import {
-  SALARY_STORY_BEATS,
+  COHORT_LABELS,
+  POOLING_NOTE,
+  STORY_SCOPE_LABEL,
+  getStoryBeat,
   computeRankedSalaryRows,
   ProcessedSalaryRow,
 } from '../utils/salaryConstants';
@@ -19,6 +22,7 @@ interface HorizontalSalaryBarChartProps {
   isSpecificInstitution?: boolean;
   selectedInstitutionName?: string;
   maxSalaryScale?: number;
+  selectedNfq?: string;
 }
 
 export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> = ({
@@ -33,6 +37,7 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
   isSpecificInstitution = false,
   selectedInstitutionName = 'All Institutions',
   maxSalaryScale = 75000,
+  selectedNfq = 'level_8',
 }) => {
   // Determine previous milestone year for calculating rank movements
   const curIdx = availableYears.indexOf(selectedYear);
@@ -52,7 +57,22 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
     );
   }, [currentEarnings, previousEarnings, year1Earnings, maxSalaryScale]);
 
-  const story = SALARY_STORY_BEATS[selectedYear] || SALARY_STORY_BEATS[1];
+  const isCurated = !isSpecificInstitution && selectedNfq === 'level_8';
+  const baseStory = getStoryBeat(selectedYear, rows, isCurated);
+
+  // Cohorts actually behind the figures on screen. For an institution these
+  // come from the data (e.g. TU Dublin Year 5 = 2018 graduates only).
+  const instCohorts = Array.from(
+    new Set(Object.values(currentEarnings).flatMap((e) => (e && e.annualEquivalentEur > 0 ? e.cohorts || [] : [])))
+  ).sort();
+  const cohortText = !isSpecificInstitution
+    ? COHORT_LABELS[selectedYear]
+    : instCohorts.length === 0
+    ? 'none published'
+    : instCohorts.length === 1
+    ? `${instCohorts[0]} grads`
+    : `${instCohorts[0]}–${String(instCohorts[instCohorts.length - 1]).slice(2)} grads`;
+  const story = { ...baseStory, cohortLabel: cohortText };
   const topEarningRow = rows[0];
   const isFinalYear = selectedYear === 10;
   const decadePct = Math.round((selectedYear / 10) * 100);
@@ -73,10 +93,10 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
           <div className="flex items-center space-x-2">
             <span className="flex items-center space-x-1.5 text-[11px] font-bold tracking-wider text-cyan-400 uppercase bg-cyan-950/80 border border-cyan-800 px-3 py-1 rounded-full shadow-sm">
               <Clock className="w-3 h-3 text-cyan-400" />
-              <span>2015 → 2025 Longitudinal Study</span>
+              <span>Years 1–10 after graduation</span>
             </span>
             <span className="text-xs text-slate-400 hidden sm:inline">
-              Tracking the 2015 graduate cohort through verified Revenue tax records to the 2025 decade horizon
+              {isCurated ? `${STORY_SCOPE_LABEL} • ` : ''}Year {selectedYear}: {isSpecificInstitution ? `${selectedInstitutionName}, cohorts with published figures: ${cohortText}` : `pools the ${cohortText}`} (CSO, Revenue PAYE records)
             </span>
           </div>
 
@@ -89,7 +109,7 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
                   : 'bg-slate-900 text-slate-300 border-slate-800'
               }`}
             >
-              {isFinalYear ? '★ 2025 Complete 10-Year Horizon (Holding 4×)' : `Year ${selectedYear} (${story.calendarYear}) • ${decadePct}% of Decade`}
+              {`${isFinalYear ? '★ ' : ''}Year ${selectedYear} of 10 • ${story.cohortLabel}`}
             </span>
           </div>
         </div>
@@ -112,11 +132,11 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
                 <span className="text-xl font-black text-white tracking-tight font-mono-numbers">
                   YEAR {selectedYear}
                 </span>
-                <span className="text-xs font-bold text-cyan-300 font-mono-numbers">
-                  {story.calendarYear}
+                <span className="text-[10px] font-bold text-cyan-300 font-mono-numbers">
+                  {story.cohortLabel}
                 </span>
                 <span className="text-[9px] font-semibold text-slate-400 uppercase mt-0.5">
-                  2015 → {story.calendarYear}
+                  since graduation
                 </span>
               </div>
               <div
@@ -159,7 +179,7 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
               ) : (
                 <>
                   <Play className="w-3.5 h-3.5 fill-slate-950" />
-                  <span>Play 2015–'25</span>
+                  <span>Play Years 1–10</span>
                 </>
               )}
             </button>
@@ -168,12 +188,11 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
             <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
               {availableYears.map((yr) => {
                 const isActive = selectedYear === yr;
-                const yrBeat = SALARY_STORY_BEATS[yr];
                 return (
                   <button
                     key={yr}
                     onClick={() => onSelectYear(yr)}
-                    title={`Year ${yr} (${yrBeat?.calendarYear})`}
+                    title={isSpecificInstitution ? `Year ${yr}` : `Year ${yr}: ${COHORT_LABELS[yr]}`}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold font-mono-numbers transition flex flex-col items-center ${
                       isActive
                         ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm shadow-cyan-500/30 font-bold'
@@ -181,7 +200,6 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
                     }`}
                   >
                     <span>Y{yr}</span>
-                    <span className="text-[9px] opacity-75">'{String(yrBeat?.calendarYear || '').slice(2)}</span>
                   </button>
                 );
               })}
@@ -194,17 +212,17 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
           <div className="flex items-center justify-between text-[11px] font-mono-numbers text-slate-500 mb-1">
             <span className="font-semibold text-slate-400 flex items-center space-x-1">
               <span>●</span>
-              <span>2015 Graduation Entry</span>
+              <span>Graduation</span>
             </span>
             <span className="font-bold text-cyan-400">
-              2015 → 2025 Decade Horizon: Year {selectedYear} ({story.calendarYear}) • {decadePct}% Elapsed
+              Year {selectedYear} of 10 since graduation • {story.cohortLabel}
             </span>
             <span
               className={`font-semibold flex items-center space-x-1 transition-colors ${
                 isFinalYear ? 'text-amber-400 font-bold' : 'text-slate-400'
               }`}
             >
-              <span>2025 Decade Horizon</span>
+              <span>Year 10</span>
               <span>●</span>
             </span>
           </div>
@@ -218,12 +236,11 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
 
           {/* Milestone timeline points with calendar years */}
           <div className="flex justify-between text-[9px] font-mono-numbers text-slate-500 mt-1.5 px-0.5">
-            <span className={selectedYear === 1 ? 'text-cyan-400 font-bold' : ''}>2016 (Y1 Entry)</span>
-            <span className={selectedYear === 2 ? 'text-cyan-400 font-bold' : ''}>2017 (Y2)</span>
-            <span className={selectedYear === 3 ? 'text-cyan-400 font-bold' : ''}>2018 (Y3 Tech Crossover)</span>
-            <span className={selectedYear === 5 ? 'text-cyan-400 font-bold' : ''}>2020 (Y5 STEM Peak)</span>
-            <span className={selectedYear === 8 ? 'text-cyan-400 font-bold' : ''}>2023 (Y8 Private Surge)</span>
-            <span className={isFinalYear ? 'text-amber-400 font-bold' : ''}>2025 (Y10 Decade Settle)</span>
+            {[1, 2, 3, 5, 8, 10].map((y) => (
+              <span key={y} className={selectedYear === y ? (y === 10 ? 'text-amber-400 font-bold' : 'text-cyan-400 font-bold') : ''}>
+                {isSpecificInstitution ? `Y${y}` : `Y${y} (${COHORT_LABELS[y]})`}
+              </span>
+            ))}
           </div>
         </div>
       </div>
@@ -252,6 +269,12 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
             })}
           </div>
         </div>
+
+        {rows.length === 0 && (
+          <div className="relative z-10 py-10 text-center text-sm text-slate-400">
+            The CSO has not published earnings for this selection at Year {selectedYear}.
+          </div>
+        )}
 
         {/* Absolutely-Positioned Animated Rows with Ultra-Smooth Hardware-Accelerated 1000ms Transition */}
         <div
@@ -400,15 +423,20 @@ export const HorizontalSalaryBarChart: React.FC<HorizontalSalaryBarChartProps> =
             {story.notableChange}
           </span>
         </div>
+        <p className="text-[10px] text-slate-500 max-w-md">{POOLING_NOTE}</p>
         <div className="flex items-center space-x-3 text-[11px] text-slate-500">
-          <span>
-            Top: <strong className="text-emerald-400">{topEarningRow?.fieldName}</strong> (€{topEarningRow?.annualEquivalentEur.toLocaleString()}/yr)
-          </span>
+          {topEarningRow ? (
+            <span>
+              Top: <strong className="text-emerald-400">{topEarningRow.fieldName}</strong> (€{topEarningRow.annualEquivalentEur.toLocaleString()}/yr)
+            </span>
+          ) : (
+            <span>No published figures for this selection</span>
+          )}
           <span>•</span>
           <span>
-            {isFinalYear
-              ? 'Final Year 10 position holds 4× longer for analysis'
-              : 'Bars smoothly swap ranks across the 10-year period'}
+            {isSpecificInstitution
+              ? '"vs nat." = national median for the same cohorts'
+              : 'Growth vs Year 1 compares different cohorts'}
           </span>
         </div>
       </div>

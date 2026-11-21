@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
             </h1>
           </div>
           <p className="text-xs text-slate-400 max-w-2xl">
-            10-year longitudinal analysis tracking Irish university graduates from lecture hall to actual economic sectors, linked directly with Revenue tax data.
+            Where Irish graduates work and what they earn 1 to 10 years after graduation, from CSO tables linking graduation records with Revenue PAYE records.
           </p>
         </div>
 

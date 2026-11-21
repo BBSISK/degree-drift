@@ -73,7 +73,7 @@ export const SalaryTrajectory: React.FC<SalaryTrajectoryProps> = ({
               <h4 className="text-sm font-black text-white uppercase tracking-wider">
                 {isSpecificInstitution
                   ? `${selectedInstitutionName} — Median Earnings`
-                  : 'National Median Earnings by Field (2015 → 2025 Horizon)'}
+                  : 'National Median Earnings by Field, Years 1–10 After Graduation'}
               </h4>
               {isSpecificInstitution && (
                 <span className="text-[10px] bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 px-2 py-0.5 rounded-full font-semibold">
@@ -83,8 +83,8 @@ export const SalaryTrajectory: React.FC<SalaryTrajectoryProps> = ({
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
               {isSpecificInstitution
-                ? `Tracking verified Revenue PAYE earnings for ${selectedInstitutionName} graduates at Year ${selectedYear}`
-                : `Source: CSO HEO12 & HEO16 linked Revenue tax records (2015 cohort tracked through 2016–2025)`}
+                ? `CSO HEO16 earnings for ${selectedInstitutionName} graduates at Year ${selectedYear}. Fields the CSO did not publish are left out; "vs nat." uses the national figure for the same cohorts.`
+                : `Source: CSO HEO12 (Revenue PAYE records). Each year pools all published graduating cohorts; median weekly pay × 52, nominal €.`}
             </p>
           </div>
         </div>
@@ -158,6 +158,7 @@ export const SalaryTrajectory: React.FC<SalaryTrajectoryProps> = ({
           isSpecificInstitution={isSpecificInstitution}
           selectedInstitutionName={selectedInstitutionName}
           maxSalaryScale={75000}
+          selectedNfq={selectedNfq}
         />
       ) : (
         /* The Original 10-Card Grid View */
