@@ -1,0 +1,1 @@
+window.TT={"1": {"retail": 32.0, "education": 11.3, "graduates": 10110}, "3": {"retail": 17.9, "education": 25.1, "graduates": 10250}, "5": {"retail": 11.2, "education": 32.1, "graduates": 10470}, "10": {"retail": 7.1, "education": 36.0, "graduates": 11100}};

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Degree Drift TikTok / Reels / Shorts cut: 1080x1920, 17 s. Figures from tiktok_data.js (CSO HEO08). -->
+<style>
+  html, body { margin: 0; padding: 0; background: #070b18; }
+  #stage { width: 1080px; height: 1920px; overflow: hidden; }
+  svg text { font-family: 'Inter', 'Noto Color Emoji', sans-serif; }
+</style>
+<script src="tiktok_data.js"></script>
+</head>
+<body>
+<div id="stage"><svg id="svg" width="1080" height="1920" viewBox="0 0 1080 1920"></svg></div>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+const T = window.TT;
+const END = 17.0;
+
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k;
+const ramp = (t, a, b) => clamp((t - a) / (b - a));
+const inOut = (t, a, b, f = 0.3) => Math.min(ramp(t, a, a + f), 1 - ramp(t, b - f, b));
+function el(tag, attrs, parent = svg, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  parent.appendChild(e);
+  return e;
+}
+function rich(parent, attrs, parts) { // parts: [text, extraAttrs?]
+  const t = el('text', attrs, parent);
+  parts.forEach(([s, a]) => el('tspan', a || {}, t, s));
+  return t;
+}
+
+// Safe area for TikTok UI: keep content within x 80–940, y 240–1500.
+const CX = 510;
+
+function background(t) {
+  el('rect', { x: 0, y: 0, width: 1080, height: 1920, fill: '#070b18' });
+  const defs = el('defs', {});
+  const rg = el('radialGradient', { id: 'g', cx: '50%', cy: '40%', r: '65%' }, defs);
+  el('stop', { offset: '0%', 'stop-color': '#ec4899', 'stop-opacity': 0.16 }, rg);
+  el('stop', { offset: '100%', 'stop-color': '#070b18', 'stop-opacity': 0 }, rg);
+  el('rect', { x: 0, y: 0, width: 1080, height: 1920, fill: 'url(#g)' });
+  el('text', { x: CX, y: 290, 'text-anchor': 'middle', 'font-size': 32, 'font-weight': 800, fill: '#38bdf8', 'letter-spacing': 8 }, svg, 'DEGREE DRIFT');
+  // Source (above TikTok's caption area)
+  el('text', { x: CX, y: 1468, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 500, fill: '#64748b' }, svg,
+    'Source: CSO Ireland, HEO08 • Arts & Humanities honours grads of 2010–13');
+  el('text', { x: CX, y: 1502, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 500, fill: '#64748b' }, svg,
+    '© Government of Ireland, CC BY 4.0 • analysis: Degree Drift');
+}
+
+// ---- Scene A: hook (0–3.2) ----
+function hook(t) {
+  const o = 1 - ramp(t, 3.0, 3.3);
+  if (o <= 0) return;
+  const g = el('g', { opacity: o });
+  const pop = 1.1 - 0.1 * easeOut(ramp(t, 0, 0.5));
+  el('text', { x: CX, y: 420, 'text-anchor': 'middle', 'font-size': 56, 'font-weight': 800, fill: '#e2e8f0' }, g, 'Studied Arts?');
+  const big = el('g', { transform: `translate(${CX},700) scale(${pop})` }, g);
+  el('text', { x: 0, y: 0, 'text-anchor': 'middle', 'font-size': 260, 'font-weight': 900, fill: '#fff' }, big, '1 in 3');
+  el('text', { x: CX, y: 830, 'text-anchor': 'middle', 'font-size': 76, 'font-weight': 800, fill: '#fff' }, g, 'Arts grads started');
+  rich(g, { x: CX, y: 925, 'text-anchor': 'middle', 'font-size': 76, 'font-weight': 800, fill: '#fff' },
+    [['out in '], ['RETAIL', { fill: '#fbbf24', 'font-weight': 900 }]]);
+  // moving bar from frame 0
+  const fill = lerp(0.18, T['1'].retail / 100, easeOut(ramp(t, 0, 1.1)));
+  const bx = 110, bw = 800, by = 1030;
+  el('rect', { x: bx, y: by, width: bw, height: 96, rx: 48, fill: 'rgba(30,41,59,0.9)' }, g);
+  el('rect', { x: bx, y: by, width: Math.max(96, bw * fill), height: 96, rx: 48, fill: '#ec4899' }, g);
+  // Label always shows the real figure (never an in-between value).
+  el('text', { x: bx + bw * fill + 24, y: by + 66, 'font-size': 52, 'font-weight': 900, fill: '#fbbf24' }, g, `${Math.round(T['1'].retail)}%`);
+  el('text', { x: CX, y: 1200, 'text-anchor': 'middle', 'font-size': 40, 'font-weight': 600, fill: '#94a3b8' }, g, 'in their first year after college');
+}
+
+// ---- Scene B: "but 10 years later" (3.2–4.6) ----
+function bridge(t) {
+  const o = inOut(t, 3.25, 4.75, 0.25);
+  if (o <= 0) return;
+  const g = el('g', { opacity: o, transform: `translate(0,${(1 - easeOut(ramp(t, 3.25, 3.7))) * 30})` });
+  el('text', { x: CX, y: 760, 'text-anchor': 'middle', 'font-size': 96, 'font-weight': 900, fill: '#fff' }, g, 'Same graduates.');
+  el('text', { x: CX, y: 880, 'text-anchor': 'middle', 'font-size': 96, 'font-weight': 900, fill: '#38bdf8' }, g, '10 years later…');
+}
+
+// ---- Scene C: the race (4.6–13.6) ----
+const KEYS = [[4.6, 1], [5.3, 1], [6.0, 3], [6.5, 3], [7.2, 5], [7.7, 5], [8.5, 10], [END, 10]];
+function stateAt(t) {
+  for (let i = 0; i < KEYS.length - 1; i++) {
+    const [t0, y0] = KEYS[i], [t1, y1] = KEYS[i + 1];
+    if (t <= t1) return { a: y0, b: y1, k: y0 === y1 ? 0 : ease((t - t0) / (t1 - t0)) };
+  }
+  return { a: 10, b: 10, k: 0 };
+}
+function race(t) {
+  const o = Math.min(ramp(t, 4.55, 4.9), 1 - ramp(t, 13.4, 13.8));
+  if (o <= 0) return;
+  const g = el('g', { opacity: o });
+  const { a, b, k } = stateAt(t);
+  const yr = k < 0.5 ? a : b;
+  const valOp = k === 0 ? 1 : Math.abs(1 - 2 * k) ** 3;
+
+  // Year chip
+  const chip = el('g', { transform: `translate(${CX},420)` }, g);
+  el('rect', { x: -230, y: -70, width: 460, height: 120, rx: 60, fill: 'rgba(15,23,42,0.92)', stroke: yr === 10 ? '#fbbf24' : '#38bdf8', 'stroke-width': 4 }, chip);
+  el('text', { x: 0, y: 14, 'text-anchor': 'middle', 'font-size': 72, 'font-weight': 900, fill: '#fff' }, chip, `YEAR ${yr}`);
+  el('text', { x: CX, y: 540, 'text-anchor': 'middle', 'font-size': 40, 'font-weight': 600, fill: '#94a3b8' }, g, 'after graduation');
+
+  const rows = [
+    { key: 'retail', label: 'Retail', color: '#ec4899', y: 700 },
+    { key: 'education', label: 'Education', color: '#f59e0b', y: 960 },
+  ];
+  const bx = 110, bw = 800, maxV = 40;
+  const payoff = ramp(t, 9.0, 9.5);
+  rows.forEach(r => {
+    const v = lerp(T[String(a)][r.key], T[String(b)][r.key], k);
+    const shown = T[String(yr)][r.key];
+    const hi = r.key === 'education' ? 1 : lerp(1, 0.55, payoff);
+    const rg = el('g', { opacity: hi }, g);
+    el('text', { x: bx, y: r.y - 30, 'font-size': 60, 'font-weight': 800, fill: '#fff' }, rg, r.label);
+    el('rect', { x: bx, y: r.y, width: bw, height: 120, rx: 60, fill: 'rgba(30,41,59,0.9)' }, rg);
+    el('rect', { x: bx, y: r.y, width: Math.max(120, bw * v / maxV), height: 120, rx: 60, fill: r.color }, rg);
+    el('text', { x: bx + Math.max(120, bw * v / maxV) - 28, y: r.y + 84, 'text-anchor': 'end', 'font-size': 64, 'font-weight': 900, fill: '#0b1020', opacity: valOp }, rg, `${Math.round(shown)}%`);
+  });
+
+  // Payoff text
+  if (payoff > 0) {
+    const pg = el('g', { opacity: payoff, transform: `translate(0,${(1 - easeOut(payoff)) * 30})` }, g);
+    rich(pg, { x: CX, y: 1250, 'text-anchor': 'middle', 'font-size': 70, 'font-weight': 900, fill: '#fff' },
+      [[`${Math.round(T['10'].education)}% `, { fill: '#fbbf24' }], ['now work in education']]);
+    el('text', { x: CX, y: 1340, 'text-anchor': 'middle', 'font-size': 52, 'font-weight': 700, fill: '#cbd5e1' }, pg,
+      `Retail: down to ${Math.round(T['10'].retail)}%`);
+  }
+}
+
+// ---- Scene D: call to action (13.6–17) ----
+function cta(t) {
+  const o = ramp(t, 13.6, 14.0);
+  if (o <= 0) return;
+  const g = el('g', { opacity: o, transform: `translate(0,${(1 - easeOut(ramp(t, 13.6, 14.1))) * 30})` });
+  el('text', { x: CX, y: 640, 'text-anchor': 'middle', 'font-size': 64, 'font-weight': 700, fill: '#cbd5e1' }, g, 'Your first job');
+  el('text', { x: CX, y: 730, 'text-anchor': 'middle', 'font-size': 64, 'font-weight': 700, fill: '#cbd5e1' }, g, "isn't your career.");
+  const k2 = easeOut(ramp(t, 14.4, 14.9));
+  const g2 = el('g', { opacity: k2 }, g);
+  el('text', { x: CX, y: 920, 'text-anchor': 'middle', 'font-size': 104, 'font-weight': 900, fill: '#fff' }, g2, 'What did');
+  el('text', { x: CX, y: 1035, 'text-anchor': 'middle', 'font-size': 104, 'font-weight': 900, fill: '#fff' }, g2, 'you study?');
+  const bob = Math.sin((t - 14.9) * 6) * 8;
+  rich(g2, { x: CX, y: 1190 + bob * k2, 'text-anchor': 'middle', 'font-size': 52, 'font-weight': 800, fill: '#38bdf8' },
+    [['Comment it 👇']]);
+  el('text', { x: CX, y: 1270, 'text-anchor': 'middle', 'font-size': 44, 'font-weight': 600, fill: '#94a3b8' }, g2, "I'll show you where it leads");
+}
+
+window.render = function (t) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  background(t);
+  hook(t); bridge(t); race(t); cta(t);
+};
+window.render(0);
+</script>
+</body>
+</html>
